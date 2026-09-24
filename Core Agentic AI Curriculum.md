@@ -1,10 +1,102 @@
-# Agent Core — Complete Schema Reference
+# Agentic AI — Universal Curriculum
 
-All contracts, input schemas, output schemas, enums, event payloads, and the full contract tree. This is the frozen domain model. Nothing here changes without a migration plan.
+A complete, framework-independent curriculum for understanding and building agentic AI systems from scratch. Works regardless of what you are building, what stack you use, or what framework you choose.
+
+Concepts first. Implementation second. Frameworks last.
 
 ---
 
-## The contract tree
+## The progression
+
+```
+Topics 1–3      What an agent is
+Topics 4–7      How it is built
+Topics 8–11     How it stays safe
+Topic 12        How it survives failure     ← hardest, spend the most time
+Topics 13–14    How it improves
+                ↑ Every serious agent needs everything above this line ↑
+Topics 15–18    How it reasons
+Topic 19        How it manages context
+Topics 20–23    How it scales
+Topics 24–25    How it knows things
+Topics 26–28    How it reaches production
+Topic 29        How frameworks relate to it
+Topic 30        How multiple agents work together
+Topics 31–36    Advanced production patterns
+```
+
+---
+
+## Topic 1 — Foundations of Intelligent Agents
+
+1. What is an agent — definition, properties, boundaries
+2. Agent vs chatbot vs workflow vs automation
+3. Types of agents — reactive, deliberative, goal-based, learning
+4. Where language models fit in an agent
+5. What a language model can and cannot do
+6. Why a language model alone is not an agent
+7. The environment — what the agent perceives and acts on
+8. Perception, reasoning, action — the three responsibilities
+9. Real world examples — coding agents, support agents, research agents, browser agents
+
+---
+
+## Topic 2 — The Agent Loop
+
+1. Why agents run in a loop and not a pipeline
+2. The minimal loop — perceive, reason, act
+3. The ReAct loop — reason, act, observe, repeat
+4. What a step is
+5. What an observation is and why it matters
+6. How the loop terminates — goal met, budget exhausted, failure
+7. Why the model proposes and the runtime executes — never the other way
+8. Reading a real agent trace end to end
+
+---
+
+## Topic 3 — Agent Architecture
+
+1. The core components every agent must have — loop, model, tools, context, state, memory
+2. How components relate to each other
+3. The proposal-execution gap — the most important architectural idea in agent design
+4. Separation of concerns — what belongs where
+5. Agent boundaries — what is inside the agent and what is outside
+6. Designing for replaceability — why every component should be swappable
+7. The runtime as the authority — the model only suggests, the runtime decides
+
+---
+
+## Topic 4 — Domain Modelling and Contracts
+
+1. Why domain modelling comes before implementation
+    
+2. The ownership hierarchy every agent system needs:
+    
+    ```
+    Agent
+      └── AgentVersion
+            └── Session
+                  └── Turn
+                        └── Run
+                              └── Step
+    ```
+    
+3. What each entity owns and what it references
+    
+4. Value objects within a step — Context, ModelRequest, ModelResponse, ActionProposal, PolicyDecision, ToolCall, ToolResult, Observation
+    
+5. Input schema and output schema — every contract has both, always
+    
+6. Why contracts you persist are different from classes you instantiate
+    
+7. Schema versioning — once you persist a contract its shape is permanent
+    
+8. Writing contracts as code — interfaces, dataclasses, typed models
+    
+9. Stability — why core contracts must be frozen early
+    
+
+**The contract tree in full:**
 
 ```
 Agent
@@ -12,1184 +104,868 @@ Agent
         └── Session (one conversation)
               └── Turn (one user message + agent response)
                     └── Run (one execution attempt)
-                          └── Step (one iteration of the loop)
-                                │
+                          └── Step (one loop iteration)
                                 ├── Context
                                 │     └── ContextFragment (one piece of context)
-                                │           ├── source
-                                │           ├── instruction_authority
-                                │           ├── content_trust
-                                │           ├── content_hash
-                                │           └── captured_at
-                                │
                                 ├── ModelRequest
-                                │     └── Message[]
-                                │           └── ContentBlock[]
-                                │
                                 ├── ModelResponse
-                                │     ├── ContentBlock[]
-                                │     └── TokenUsage
-                                │
                                 └── ActionProposal
-                                      │
-                                      ├── [type: TOOL_CALL]
-                                      │       ↓
-                                      │   PolicyGate
-                                      │       ↓
-                                      │   PolicyDecision
-                                      │   ├── APPROVED
-                                      │   │       ↓
-                                      │   │   ToolCall
-                                      │   │       ↓
-                                      │   │   ToolResult
-                                      │   │       ↓
-                                      │   │   Observation
-                                      │   │       ↓
-                                      │   │   next Step
-                                      │   │
-                                      │   ├── REJECTED
-                                      │   │       ↓
-                                      │   │   back to model with reason
-                                      │   │
-                                      │   └── MODIFIED
-                                      │           ↓
-                                      │       ToolCall (with amended args)
-                                      │
-                                      └── [type: FINAL_ANSWER]
-                                              ↓
-                                          Run completes
-                                              ↓
-                                          Turn completes
+                                      ├── [tool_call]
+                                      │     → PolicyDecision
+                                      │       → ToolCall → ToolResult → Observation → next Step
+                                      └── [final_answer]
+                                            → Run completes
+```
+
+**Key schemas:**
+
+```
+Agent
+  id, name, description, tenant_id, created_at
+
+AgentVersion
+  id, agent_id, version_number (immutable), instructions,
+  model_config (provider, model_id, temperature, max_tokens),
+  tool_ids[], limits (max_steps, max_tokens, max_cost, max_wall_seconds),
+  context_config, granted_authority, tenant_id
+
+Session
+  id, agent_id, version_id, principal (user_id, tenant_id, role), created_at
+
+Turn
+  id, session_id, index, user_input, created_at
+
+Run
+  id, turn_id, session_id, agent_id, version_id, principal,
+  status (CREATED|RUNNING|WAITING|PAUSED|COMPLETED|FAILED|CANCELLED),
+  created_at, completed_at, final_answer, error, tenant_id
+
+Step
+  id, run_id, index (logical — for replay), wall_clock,
+  status (RUNNING|COMPLETED|FAILED), created_at
+
+ContextFragment
+  fragment_id, source, instruction_authority (can_instruct|data_only),
+  content_trust (trusted|semi_trusted|untrusted),
+  content_hash, content, captured_at, token_count, metadata
+
+ModelRequest
+  id, step_id, run_id, provider, model_id, messages[],
+  tools[], temperature, max_tokens, created_at
+
+ModelResponse
+  id, request_id, step_id, run_id, provider, model_id, model_version,
+  content[], stop_reason, usage (input_tokens, output_tokens, total_tokens),
+  cost_usd, latency_ms, created_at
+
+ActionProposal
+  id, step_id, run_id, response_id,
+  type (TOOL_CALL|FINAL_ANSWER),
+  tool_name, tool_args, final_answer, reasoning, created_at
+
+PolicyDecision
+  id, proposal_id, run_id,
+  decision (APPROVED|REJECTED|MODIFIED),
+  reason, amended_args, decided_by, decided_at
+
+ToolCall
+  id, step_id, run_id, decision_id, tool_name, tool_version,
+  args (validated against input_schema), dedup_key, started_at, principal
+
+ToolResult
+  id, tool_call_id, run_id,
+  status (SUCCESS|ERROR|TIMEOUT|CANCELLED|UNKNOWN),
+  output (validated against output_schema), error, completed_at, latency_ms
+
+Observation
+  id, step_id, run_id, tool_call_id,
+  source (TOOL_RESULT|MODEL_RESPONSE|HUMAN_INPUT|SYSTEM),
+  fragment (ContextFragment), recorded_at
 ```
 
 ---
 
-## Cross-cutting fields
+## Topic 5 — Model Interaction
 
-Every persisted record carries these fields. They are not repeated in each schema below but they are always present.
+1. What a ModelProvider is and why it exists
+2. The generate interface — text generation
+3. generate_structured — typed output from the model
+4. decide — fast structured decisions for classification and routing (Topic 36)
+5. Why structured output is a reliability problem, not a parsing problem
+6. Malformed output — detection, repair, rejection
+7. Transient failures and retries with backoff
+8. Rate limits and backpressure
+9. Token counting and cost tracking as first-class response fields
+10. Latency measurement per call
+11. Model identity and version — always record which model answered
+12. Provider abstraction — swap models without touching the loop
 
-```
-tenant_id*       uuid       — which tenant owns this record
-principal*       Principal  — who triggered this action
-  user_id        uuid
-  tenant_id      uuid
-  role           string
-created_at*      timestamp  — when the record was created
-```
-
----
-
-## Core entity schemas
-
----
-
-### Agent
+**ModelProvider interface:**
 
 ```
-INPUT (to create)
-  name*            string
-  description      string
-  tenant_id*       uuid
-
-OUTPUT (persisted)
-  id*              uuid
-  name*            string
-  description      string
-  current_version  uuid → AgentVersion.id | null
-  created_at*      timestamp
-  updated_at*      timestamp
-  tenant_id*       uuid
+generate(messages, tools, config) → ModelResponse
+generate_structured(messages, output_schema, config) → typed output
+decide(state, questions) → structured decisions with confidence
 ```
 
 ---
 
-### AgentVersion
+## Topic 6 — Tool Design and the Tool System
+
+1. What a tool is — a capability the agent can invoke
+    
+2. Tool definition — name, description, input schema, output schema
+    
+3. JSON Schema — validating every input before execution
+    
+4. The tool registry — how the agent discovers available tools
+    
+5. Tool execution — the full lifecycle of a single tool call
+    
+6. Tool results and tool errors
+    
+7. Error taxonomy — validation error, timeout, failure, unknown outcome
+    
+8. Timeouts and cancellation
+    
+9. Tool versioning
+    
+10. Side effect classification:
+    
+    ```
+    effect        read | create | update | delete | external
+    idempotency   natural | client_key | none
+    reversibility reversible | compensatable | irreversible
+    recovery      derived from the three above — never declared independently
+    ```
+    
+11. Dedup keys — passed to every effectful tool, preventing double execution
+    
+12. Tool lifecycle events
+    
+13. Writing good tool descriptions — written for a model to read, not a human
+    
+
+**ToolDefinition schema:**
 
 ```
-INPUT (to create)
-  agent_id*            uuid → Agent.id
-  instructions*        string
-  model_config*        ModelConfig
-  tools*               list[uuid → ToolDefinition.id]
-  limits*              BudgetConfig
-  context_config       ContextConfig
-  granted_authority    GrantedAuthority
-
-OUTPUT (persisted, immutable after creation)
-  id*                  uuid
-  agent_id*            uuid → Agent.id
-  version_number*      integer (monotonic, never changes)
-  instructions*        string
-  model_config*        ModelConfig
-    provider*          string
-    model_id*          string
-    temperature        float
-    max_tokens         integer
-  tools*               list[uuid → ToolDefinition.id]
-  limits*              BudgetConfig
-    max_steps          integer
-    max_model_calls    integer
-    max_tokens         integer
-    max_cost_usd       float
-    max_wall_seconds   integer
-    max_tool_calls     integer
-    max_retries        integer
-  context_config       ContextConfig
-    max_tokens         integer
-    sources            list[ContextSourceConfig]
-      source           FragmentSource
-      max_tokens       integer
-      priority         integer
-  granted_authority    GrantedAuthority
-    user_can_extend    bool
-    allowed_tools      list[string]
-  created_at*          timestamp
-  tenant_id*           uuid
+id, name, version, description,
+input_schema (JSON Schema),
+output_schema (JSON Schema),
+effect, idempotency, reversibility, recovery (derived),
+timeout_ms, tenant_id
 ```
 
----
-
-### Session
+**Recovery matrix (derived):**
 
 ```
-INPUT (to create)
-  agent_id*        uuid → Agent.id
-  version_id*      uuid → AgentVersion.id
-  principal*       Principal
-  metadata         dict
-
-OUTPUT (persisted)
-  id*              uuid
-  agent_id*        uuid → Agent.id
-  version_id*      uuid → AgentVersion.id
-  principal*       Principal
-  metadata         dict
-  created_at*      timestamp
-  ended_at         timestamp | null
-  tenant_id*       uuid
+READ + NATURAL + REVERSIBLE         → retry_safe
+CREATE + CLIENT_KEY + REVERSIBLE    → retry_safe
+CREATE + NONE + IRREVERSIBLE        → manual
+DELETE + NONE + IRREVERSIBLE        → manual
+EXTERNAL + CLIENT_KEY + COMPENSATABLE → reconcile
 ```
 
 ---
 
-### Turn
+## Topic 7 — Trust, Authority and Safety
+
+1. Why trust is an architectural constraint, not a security feature
+    
+2. The confused deputy problem — when the agent is tricked into acting on bad data
+    
+3. Instruction authority vs content trust — two separate fields, not one level
+    
+4. The authority table:
+    
+    ```
+                       instruction_authority    content_trust
+    system             can_instruct             trusted
+    operator           can_instruct             trusted
+    user               can_instruct             semi_trusted
+                       (within granted limits)
+    tool output        data_only                untrusted
+    retrieved knowledge data_only              untrusted
+    memory             data_only                untrusted
+    ```
+    
+5. Why tool output is data only and can never carry instructions
+    
+6. Prompt injection — what it is, how it works, why it is a design constraint not a patch
+    
+7. The single enforcement choke point — one place in the code, the context renderer
+    
+8. Designing injection resistance in from day one
+    
+9. The injection test — a fixture that returns "ignore your previous instructions" in tool output, kept in the test suite forever
+    
+
+---
+
+## Topic 8 — Agent State
+
+1. What state a running agent needs
+2. Core state fields — goal, current step, observations, tool results, errors, budget, answer
+3. State as a projection — derived from events, not the source of truth
+4. Serialisation and deserialisation
+5. Two clocks — wall time and logical step index
+6. Why the logical clock matters for replay and the wall clock does not
+7. Checkpoints as a performance optimisation, never as truth
+
+**AgentState schema:**
 
 ```
-INPUT (to create)
-  session_id*      uuid → Session.id
-  index*           integer (position in session, 0-based)
-  user_input*      string
+Derived from the event log — never stored as primary data.
 
-OUTPUT (persisted)
-  id*              uuid
-  session_id*      uuid → Session.id
-  index*           integer
-  user_input*      string
-  created_at*      timestamp
-  completed_at     timestamp | null
-  tenant_id*       uuid
+run_id, status, goal, current_step (logical index),
+observations[], tool_results[], errors[],
+budget (steps_used/limit, tokens_used/limit, cost_used/limit, wall_ms_used/limit),
+final_answer, logical_clock, wall_clock
 ```
 
 ---
 
-### Run
+## Topic 9 — Lifecycle and State Machine
+
+1. Why a formal lifecycle prevents entire classes of bugs
+2. The seven states — CREATED, RUNNING, WAITING, PAUSED, COMPLETED, FAILED, CANCELLED
+3. What each state means and when it applies
+4. The full valid transition table:
 
 ```
-INPUT (to create)
-  turn_id*         uuid → Turn.id
-  session_id*      uuid → Session.id
-  agent_id*        uuid → Agent.id
-  version_id*      uuid → AgentVersion.id
-  principal*       Principal
+CREATED   → RUNNING
+RUNNING   → WAITING | PAUSED | COMPLETED | FAILED | CANCELLED
+WAITING   → RUNNING | CANCELLED | FAILED
+PAUSED    → RUNNING | CANCELLED
+COMPLETED → (terminal)
+FAILED    → (terminal)
+CANCELLED → (terminal)
+```
 
-OUTPUT (persisted)
-  id*              uuid
-  turn_id*         uuid → Turn.id
-  session_id*      uuid → Session.id
-  agent_id*        uuid → Agent.id
-  version_id*      uuid → AgentVersion.id
-  principal*       Principal
-  status*          RunStatus
-  created_at*      timestamp
-  started_at       timestamp | null
-  completed_at     timestamp | null
-  final_answer     string | null
-  error            RunError | null
-  tenant_id*       uuid
+5. Enforcing transitions — illegal ones rejected at write time
+6. Cancellation semantics — what happens to in-flight work
+7. Pause and resume
+8. Terminal states and what can never happen after them
+
+---
+
+## Topic 10 — Budgets and Resource Control
+
+1. Why every agent needs hard limits — an agent without budgets is a liability
+2. What to budget — steps, model calls, tokens, cost, wall time, tool calls, retries
+3. Why a counter breaks in a system that replays events
+4. Reserve-then-settle — the correct pattern
+5. Budget debits as events — spending recorded, not mutated
+6. Budgets surviving restart
+7. BudgetExceeded as a first-class failure, not a special case
+8. Budget policies — per agent version, per run, per user
+
+**BudgetState schema:**
+
+```
+Derived from BudgetConfig (limits) + BudgetDebited events (spends).
+
+Per dimension: used, limit, remaining, exceeded (bool)
+Dimensions: steps, model_calls, tokens, cost_usd, wall_seconds, tool_calls, retries
 ```
 
 ---
 
-### Step
+## Topic 11 — Failure Taxonomy and Recovery
+
+1. Why failure must be part of the design, not handled after the fact
+    
+2. Categories — model failures, tool failures, budget failures, infrastructure failures
+    
+3. The full taxonomy:
+    
+    - ModelTransientError
+    - ModelInvalidOutput
+    - ToolValidationError
+    - ToolTimeout
+    - ToolFailure
+    - UnknownToolOutcome
+    - BudgetExceeded
+    - LeaseLost
+    - RunCancelled
+4. The recovery matrix — written as a table, not prose:
+    
+    ```
+    Error class              Recovery policy
+    ModelTransientError      retry with backoff
+    ModelInvalidOutput       retry with repair
+    ToolValidationError      fail (bad proposal from model)
+    ToolTimeout              retry or reconcile (per tool policy)
+    ToolFailure              retry or escalate (per tool policy)
+    UnknownToolOutcome       reconcile or manual (per tool policy)
+    BudgetExceeded           fail
+    LeaseLost                requeue
+    RunCancelled             fail
+    ```
+    
+5. Retry vs retry-with-repair vs replan vs escalate vs fail — when each applies
+    
+6. Unknown outcomes — the hardest case, and the one that actually bites
+    
+7. Injecting every error class by hand and watching each recovery path run
+    
+
+---
+
+## Topic 12 — Durable Execution
+
+> The hardest topic in the curriculum. Spend the most time here. Everything after it depends on getting this right.
+
+1. The durability problem — what happens when a process dies mid-execution
+    
+2. The crash question — you called a tool, the process died, did it happen?
+    
+3. The event log — append-only, ordered, the one source of truth
+    
+4. Events vs state — why events are primary and state is derived
+    
+5. The full event set:
+    
+    ```
+    RunCreated, StepStarted, ContextAssembled,
+    ModelRequested, ModelResponded, ActionProposed, PolicyDecided,
+    ToolCallIntended, ToolCallCompleted, UnknownOutcome,
+    ObservationRecorded, StepCompleted, BudgetDebited,
+    RunCompleted, RunFailed, HumanInputRequested, HumanInputReceived
+    ```
+    
+6. Intent before effect — ToolCallIntended written before execution
+    
+7. UnknownOutcome as a first-class event, not an exception
+    
+8. State as a projection of the event log
+    
+9. Checkpoints as a performance optimisation only
+    
+10. REPLAY — reconstruct from events, no model call, no tool call, ever
+    
+11. RESUME — reconstruct history, then continue with new steps
+    
+12. EVAL — replay recorded model and tool responses against new code, no network
+    
+13. Why these three modes must be separated in code, not just in documentation
+    
+14. Event schema versioning — a version field on every event, with an upcast strategy
+    
+15. Identity fields — tenant and principal on every event
+    
+16. kill -9 mid-run at three different points, restart, reconstruct, explain each case
+    
+
+**EventEnvelope schema:**
 
 ```
-INPUT (to create)
-  run_id*          uuid → Run.id
-  index*           integer (logical step number — used for replay, not wall time)
+event_id, schema_version, event_type, run_id, step_id,
+tenant_id, principal, occurred_at, logical_clock, payload
+```
 
-OUTPUT (persisted)
-  id*              uuid
-  run_id*          uuid → Run.id
-  index*           integer
-  status*          StepStatus
-  wall_clock*      timestamp
-  created_at*      timestamp
-  completed_at     timestamp | null
-  tenant_id*       uuid
+**Key event payloads:**
+
+```
+ToolCallIntended    tool_call_id, tool_name, tool_version, args, dedup_key
+ToolCallCompleted   tool_call_id, result_id, status, latency_ms
+UnknownOutcome      tool_call_id, dedup_key, recovery_policy
+BudgetDebited       dimension, amount, remaining
+RunCompleted        final_answer, steps_taken, total_cost_usd, total_tokens, wall_ms
+RunFailed           error_code, error_message, recoverable
 ```
 
 ---
 
-## Context schemas
+## Topic 13 — Observability and Tracing
+
+1. Why observability is not optional in agentic systems
+2. The difference between logging, tracing and metrics
+3. Traces and spans — the model for capturing what happened
+4. Correlation IDs — connecting events across every component
+5. What to capture — model calls, tool calls, tokens, cost, latency, errors, state transitions
+6. Structured traces vs unstructured logs
+7. The observability bar — answer "why did it do that?" from the trace alone, source closed
+8. Cost and latency per run, per step, per component
+9. Connecting traces to events in the durable log
+10. OpenTelemetry — emit in a standard format so any tool can consume the traces
 
 ---
 
-### ContextFragment
+## Topic 14 — Evaluation
 
-```
-INPUT (to create)
-  source*              FragmentSource
-  instruction_authority* AuthorityLevel
-  content_trust*       TrustLevel
-  content*             string
-  metadata             dict
-
-OUTPUT (persisted)
-  fragment_id*         uuid
-  source*              FragmentSource
-  instruction_authority* AuthorityLevel
-  content_trust*       TrustLevel
-  content_hash*        string (sha256 — content addressed, bytes stored once)
-  content              string (may be a reference to blob store)
-  captured_at*         timestamp
-  token_count          integer | null
-  metadata             dict
-  tenant_id*           uuid
-```
+1. Why you cannot safely improve an agent you cannot measure
+2. The difference between testing and evaluation
+3. Golden tasks — inputs with expected outputs, what makes a good one
+4. Tool fixtures — deterministic tool responses for testing
+5. Model fixtures — deterministic model responses for testing
+6. Failure injection — deliberate breaking as a permanent part of the test suite
+7. Golden runs — record a real run, replay against new code, zero tokens, deterministic regression
+8. Metrics — completion rate, tool correctness, loop rate, step count, cost, recovery rate
+9. Regression evaluation — catching when a change breaks something that worked
+10. How to know if a change made the agent better or just different
+11. Trajectory evaluation — was the sequence of actions correct, not just the final answer
+12. LLM-as-a-judge — using a model to evaluate outputs
+13. Judge reliability and bias — when to trust the judge and when not to
+14. Offline evaluation vs online evaluation — the difference and when each applies
 
 ---
 
-### ContextPlan
-
-```
-INPUT
-  available_fragments  list[ContextFragment]
-  token_budget*        integer
-  priority_config      list[ContextSourceConfig]
-
-OUTPUT
-  selected_fragment_ids    list[uuid]
-  token_allocation         dict[FragmentSource → integer]
-  excluded_fragment_ids    list[ExcludedFragment]
-    fragment_id            uuid
-    reason                 string (budget | trust | priority)
-  total_tokens             integer
-```
+> **Foundation complete. A student who has mastered Topics 1–14 can build a durable, budgeted, observable, evaluable agent that survives process restart. This is the foundation every serious agent system is built on. Everything after this point is advanced.**
 
 ---
 
-### ContextBuilder output (assembled context ready for ModelRequest)
+## Topic 15 — Goal Understanding
+
+1. Why the raw user request is not enough
+2. Intent extraction — what the user actually wants
+3. Constraint identification — what limits the solution
+4. Context gathering — what the agent already knows
+5. Success criteria — how to know when the goal is met
+6. Ambiguity detection — when to ask vs when to proceed
+7. Structured goal representation
+
+**GoalAnalysis schema:**
 
 ```
-INPUT
-  context_plan         ContextPlan
-  fragment_store       FragmentStore
-
-OUTPUT
-  fragments*           list[ContextFragment] (ordered for the model)
-                       (all DATA_ONLY fragments structurally fenced
-                        from CAN_INSTRUCT regions — enforced here,
-                        nowhere else)
-  total_tokens*        integer
-  sources_included     list[FragmentSource]
+Input:  user_input, conversation_history, agent_context
+Output: intent, constraints, context, success_criteria, ambiguities, confidence
 ```
 
 ---
 
-## Model schemas
+## Topic 16 — Task Decomposition
 
----
+1. What decomposition is and when it actually helps
+2. Subtasks — breaking a complex goal into smaller pieces
+3. Dependencies between tasks
+4. Inputs and outputs per task
+5. Dependency validation — detecting cycles and missing inputs
+6. When decomposition hurts — added latency, cost, and failure surface
+7. The rule — only decompose when measurement proves the simpler loop cannot handle it
 
-### ModelRequest
+**TaskGraph schema:**
 
 ```
-INPUT
-  provider*        string
-  model_id*        string
-  messages*        list[Message]
-  tools            list[ToolDefinition] | null
-  temperature      float | null
-  max_tokens       integer | null
-
-OUTPUT (persisted)
-  id*              uuid
-  step_id*         uuid → Step.id
-  run_id*          uuid → Run.id
-  provider*        string
-  model_id*        string
-  model_version    string | null
-  messages*        list[Message]
-    role*          string (system | user | assistant | tool)
-    content*       string | list[ContentBlock]
-  tools            list[ToolDefinition] | null
-  temperature      float | null
-  max_tokens       integer | null
-  created_at*      timestamp
-  tenant_id*       uuid
-
-ContentBlock
-  type*            string (text | tool_use | tool_result | image)
-  text             string | null
-  tool_use_id      string | null
-  tool_name        string | null
-  input            dict | null
-  output           string | null
+Input:  GoalAnalysis
+Output: tasks (id, name, description, input_schema, output_schema, depends_on[]),
+        dependency_graph, validation_result
 ```
 
 ---
 
-### ModelResponse
+## Topic 17 — Planning and Execution Strategy
+
+1. What a plan is — ordered groups of tasks
+2. Sequential execution
+3. Parallel execution — benefits and risks
+4. Concurrency problems — cancellation propagation, partial completion, compensation
+5. Replanning — adapting when execution diverges from the plan
+6. Plan validation before execution begins
+7. ReAct as a strategy
+8. Plan-and-execute as a strategy
+9. Reflection and self-critique as a strategy
+10. Strategy selection — choosing based on the task
+11. Plans propose; the runtime stays authoritative, always
+
+**ExecutionPlan schema:**
 
 ```
-INPUT (from provider)
-  content*         list[ContentBlock]
-  stop_reason*     string
-  usage*           TokenUsage
-  model_version*   string
-
-OUTPUT (persisted)
-  id*              uuid
-  request_id*      uuid → ModelRequest.id
-  step_id*         uuid → Step.id
-  run_id*          uuid → Run.id
-  provider*        string
-  model_id*        string
-  model_version*   string
-  content*         list[ContentBlock]
-  stop_reason*     StopReason
-  usage*           TokenUsage
-    input_tokens*  integer
-    output_tokens* integer
-    total_tokens*  integer
-  cost_usd*        float
-  latency_ms*      integer
-  created_at*      timestamp
-  tenant_id*       uuid
+Input:  TaskGraph, strategy
+Output: groups (sequential|parallel), steps_per_group,
+        estimated_cost, estimated_steps, replan_triggers
 ```
 
 ---
 
-### ModelProvider interface
+## Topic 18 — Verification and Self-Checking
+
+1. Why an agent should not blindly trust its own output
+2. Output validation — does the response satisfy the goal
+3. Tool result verification — is this result plausible
+4. Contradiction detection — does this conflict with earlier observations
+5. Goal completion verification — has the goal actually been met
+6. Confidence thresholds — when to proceed vs when to retry
+7. Retry triggers vs replan triggers — when each applies
+
+**VerificationResult schema:**
 
 ```
-generate(
-  INPUT:
-    messages*        list[Message]
-    tools            list[ToolDefinition] | null
-    config*          ModelConfig
-  OUTPUT:
-    ModelResponse
-)
-
-generate_structured(
-  INPUT:
-    messages*        list[Message]
-    output_schema*   JSONSchema
-    config*          ModelConfig
-  OUTPUT:
-    typed dict matching output_schema
-    + ModelResponse metadata (usage, cost, latency)
-)
-
-decide(
-  INPUT:
-    state*           dict | string
-    questions*       dict[name → Question]
-      type*          QuestionType (choice | score | boolean)
-      instructions*  string
-      criteria       dict | null (for choice type)
-      min            float | null (for score type)
-      max            float | null (for score type)
-  OUTPUT:
-    answers          dict[name → Answer]
-      choice         string | null
-      score          float | null
-      probability    float | null
-      confidence*    float
-)
+Input:  observation, goal, prior_observations
+Output: valid (bool), goal_met (bool), contradictions[],
+        confidence, action (proceed|retry|replan|escalate)
 ```
 
 ---
 
-## Action schemas
+## Topic 19 — Context Engineering
 
----
+1. Why context is one of the hardest problems in agent design
+2. What a context fragment is — the atomic unit of context
+3. Fragment fields — source, authority, trust, content, hash, timestamp, metadata
+4. Context sources — system instructions, agent instructions, user input, conversation history, tool results, memory, knowledge, run state
+5. Context assembly — selecting and ordering fragments
+6. Token budget allocation — fitting everything into the model window
+7. What to leave out — prioritisation and truncation strategies
+8. The authority choke point — one place in the renderer that enforces trust for all fragments
+9. Content addressing — storing references not payloads
+10. Explainability — being able to explain exactly what was sent to the model and why
 
-### ActionProposal
-
-```
-INPUT (parsed from ModelResponse)
-  response_id*     uuid → ModelResponse.id
-  type*            ProposalType
-  tool_name        string | null
-  tool_args        dict | null
-  final_answer     string | null
-  reasoning        string | null
-
-OUTPUT (persisted)
-  id*              uuid
-  step_id*         uuid → Step.id
-  run_id*          uuid → Run.id
-  response_id*     uuid → ModelResponse.id
-  type*            ProposalType
-  tool_name        string | null
-  tool_args        dict | null
-  final_answer     string | null
-  reasoning        string | null
-  created_at*      timestamp
-  tenant_id*       uuid
-```
-
----
-
-### PolicyDecision
+**ContextPlan schema:**
 
 ```
-INPUT (to policy gate)
-  proposal*        ActionProposal
-  run_context*     RunContext
-    agent_version  AgentVersion
-    principal      Principal
-    budget_state   BudgetState
+Input:  available fragments, token_budget, priority_config
+Output: selected_fragment_ids, token_allocation_per_source,
+        excluded_fragment_ids (with reason per exclusion), total_tokens
+```
 
-OUTPUT (persisted)
-  id*              uuid
-  proposal_id*     uuid → ActionProposal.id
-  run_id*          uuid → Run.id
-  decision*        Decision
-  reason           string | null
-  amended_args     dict | null (only when decision = MODIFIED)
-  decided_by*      string (policy engine id or "noop")
-  decided_at*      timestamp
-  tenant_id*       uuid
+**ContextBuilder output:**
+
+```
+Input:  ContextPlan, fragment store
+Output: ordered list of ContextFragments for the ModelRequest
+        (all data_only fragments structurally fenced from instruction regions)
 ```
 
 ---
 
-## Tool schemas
+## Topic 20 — Agent Definition and Versioning
 
----
+1. What an agent definition is — the complete specification
+2. Instructions, model configuration, available tools, limits, context configuration
+3. Why versions must be immutable — the agent that ran last week must be reproducible
+4. Pinning every run to a specific version
+5. Reproducing any past run exactly
+6. Granted authority — what users are allowed to do within this version
+7. Version history and rollback
 
-### ToolDefinition
+**AgentVersion schema:**
 
 ```
-INPUT (to register)
-  name*            string
-  version*         string (semver)
-  description*     string (written for a model to read, not a human)
-  input_schema*    JSONSchema
-  output_schema*   JSONSchema
-  effect*          EffectClass
-  idempotency*     IdempotencyClass
-  reversibility*   ReversibilityClass
-  timeout_ms*      integer
-
-OUTPUT (persisted)
-  id*              uuid
-  name*            string
-  version*         string
-  description*     string
-  input_schema*    JSONSchema
-  output_schema*   JSONSchema
-  effect*          EffectClass
-  idempotency*     IdempotencyClass
-  reversibility*   ReversibilityClass
-  recovery*        RecoveryPolicy (derived — see derivation table below)
-  timeout_ms*      integer
-  created_at*      timestamp
-  tenant_id*       uuid
+Input:  instructions, model_config, tool_ids[], limits, context_config, granted_authority
+Output: version_id, version_number (immutable after creation),
+        agent_id, created_at, tenant_id
 ```
 
 ---
 
-### Tool side-effect classification
+## Topic 21 — Human in the Loop
+
+1. When humans must be involved — approval, ambiguity, high-risk actions, policy
+2. Human in the loop as a first-class architectural pattern, not an afterthought
+3. A dedicated lifecycle state for waiting on a human
+4. Human input requests as durable events
+5. No worker held while waiting — the run suspends and the worker is released
+6. Human response and run resumption
+7. Timeout handling — what if the human never responds
+8. Surviving process restart while waiting
+9. Audit trail — every human decision recorded permanently
+
+**HumanInputRequest schema:**
 
 ```
-effect         read | create | update | delete | external
-idempotency    natural | client_key | none
-reversibility  reversible | compensatable | irreversible
-recovery       DERIVED from the three above — never declared independently
-```
-
-**Recovery derivation table:**
-
-```
-effect     idempotency   reversibility    recovery
-────────   ───────────   ─────────────    ────────────
-read       natural       reversible       retry_safe
-create     client_key    reversible       retry_safe
-create     client_key    compensatable    retry_safe
-update     client_key    reversible       retry_safe
-update     client_key    compensatable    reconcile
-create     none          irreversible     manual
-delete     none          irreversible     manual
-external   client_key    compensatable    reconcile
-external   none          irreversible     manual
-```
-
-Override is allowed only with a written justification field. The combination is validated at registry load.
-
----
-
-### ToolCall
-
-```
-INPUT (to executor)
-  decision_id*     uuid → PolicyDecision.id
-  tool_name*       string
-  tool_version*    string
-  args*            dict (validated against ToolDefinition.input_schema before this point)
-  dedup_key*       string (written to ToolCallIntended event BEFORE execution)
-  principal*       Principal
-
-OUTPUT (persisted)
-  id*              uuid
-  step_id*         uuid → Step.id
-  run_id*          uuid → Run.id
-  decision_id*     uuid → PolicyDecision.id
-  tool_name*       string
-  tool_version*    string
-  args*            dict
-  dedup_key*       string
-  started_at*      timestamp
-  principal*       Principal
-  tenant_id*       uuid
+Input:  run_id, step_id, prompt, context, timeout_seconds
+Output: request_id, status (pending|responded|timed_out), response | null, responded_by | null
 ```
 
 ---
 
-### ToolResult
+## Topic 22 — Streaming and Progressive Disclosure
+
+1. Why users need feedback during long-running agent tasks
+2. Token streaming — sending model output as it generates
+3. Step-level progress — telling the user what the agent is doing
+4. Why durability and streaming are in tension — partial output has no place in an event log
+5. The correct pattern — stream from the live executor, commit only settled events
+6. Reconnection — replay committed events then reattach to the live stream
+7. Progress events as permanent records in the event log
+
+---
+
+## Topic 23 — Distributed Workers and Scheduling
+
+1. Why a single process eventually becomes a bottleneck
+2. The scheduling problem — matching runnable runs to available workers
+3. Leases — a worker's exclusive claim on a run
+4. Lease expiration and renewal
+5. Fencing tokens — preventing two workers from running the same thing simultaneously
+6. Worker crash recovery
+7. Duplicate execution protection
+8. Priority queues — running important work first
+9. Backpressure — what to do when more work arrives than workers can handle
+
+**Lease schema:**
 
 ```
-INPUT (from tool)
-  output           dict | null (validated against ToolDefinition.output_schema)
-  error            ToolError | null
-  status*          ToolResultStatus
-
-OUTPUT (persisted)
-  id*              uuid
-  tool_call_id*    uuid → ToolCall.id
-  run_id*          uuid → Run.id
-  status*          ToolResultStatus
-  output           dict | null
-  error            ToolError | null
-    code*          string
-    message*       string
-    type*          ToolErrorType
-    recoverable*   bool
-  completed_at*    timestamp
-  latency_ms*      integer
-  tenant_id*       uuid
+Input:  run_id, worker_id, lease_duration_seconds
+Output: lease_id, expires_at, fencing_token (monotonic integer — higher always wins)
 ```
 
 ---
 
-### Observation
+## Topic 24 — Memory Systems
+
+1. The four things that look like memory but are not the same — state, conversation, memory, knowledge
+2. Why they must be kept separate
+3. Short-term memory — within a single run
+4. Long-term memory — persisted across runs
+5. Episodic memory — what happened in past interactions
+6. Semantic memory — facts and concepts the agent has learned
+7. MemoryStore — reading, writing, querying
+8. Retrieval — finding relevant memories for the current context
+9. Expiration and forgetting
+10. Provenance — knowing where every memory came from
+11. Memory as data only — it can never instruct
+
+**MemoryRecord schema:**
 
 ```
-INPUT (to record)
-  tool_call_id     uuid → ToolCall.id | null
-  source*          ObservationSource
-  content*         string (the observation text)
-
-OUTPUT (persisted)
-  id*              uuid
-  step_id*         uuid → Step.id
-  run_id*          uuid → Run.id
-  tool_call_id     uuid → ToolCall.id | null
-  source*          ObservationSource
-  fragment*        ContextFragment (observation rendered as a DATA_ONLY fragment)
-  recorded_at*     timestamp
-  tenant_id*       uuid
+Input:  content, memory_type, source, agent_id, principal
+Output: memory_id, content_hash, embedding, created_at,
+        expires_at | null, provenance, tenant_id
 ```
 
----
-
-## State schema
-
----
-
-### AgentState (projection — never stored as primary data)
+**MemoryQuery schema:**
 
 ```
-INPUT
-  event_log*       list[EventEnvelope] (ordered by logical_clock)
-
-OUTPUT (derived)
-  run_id*          uuid
-  status*          RunStatus
-  goal             string | null
-  current_step*    integer (logical step index)
-  observations*    list[uuid → Observation.id]
-  tool_results*    list[uuid → ToolResult.id]
-  errors*          list[RunError]
-  budget*          BudgetState
-    steps_used     integer
-    steps_limit    integer
-    model_calls_used    integer
-    model_calls_limit   integer
-    tokens_used    integer
-    tokens_limit   integer
-    cost_usd_used  float
-    cost_usd_limit float
-    wall_ms_used   integer
-    wall_ms_limit  integer
-    tool_calls_used     integer
-    tool_calls_limit    integer
-    retries_used   integer
-    retries_limit  integer
-  final_answer     string | null
-  logical_clock*   integer (step index — deterministic, used for replay)
-  wall_clock*      timestamp (real time — not used for replay)
+Input:  query_text | embedding, memory_types[], limit, min_relevance
+Output: list of MemoryRecord with relevance_score
 ```
 
 ---
 
-## Event schemas
+## Topic 25 — Knowledge Retrieval and RAG
 
----
+1. What RAG is — retrieval augmented generation
+2. Why agents need external knowledge beyond their training
+3. Document ingestion — getting knowledge into the system
+4. Chunking strategies — how to split documents for retrieval
+5. Embeddings — representing meaning as vectors
+6. Vector search — finding relevant chunks
+7. Reranking — improving retrieval quality after the initial search
+8. Context integration — turning retrieved chunks into context fragments
+9. Source provenance — always know where knowledge came from
+10. Retrieved content is untrusted — always data only, always
+11. Knowledge freshness — how old is this, and does that matter
 
-### EventEnvelope (wraps every event)
-
-```
-INPUT
-  event_type*      string
-  run_id*          uuid → Run.id
-  step_id          uuid → Step.id | null
-  tenant_id*       uuid
-  principal*       Principal
-  payload*         dict (event-specific)
-
-OUTPUT (persisted)
-  event_id*        uuid
-  schema_version*  string (e.g. "1.0.0" — never changes for a given event shape)
-  event_type*      string
-  run_id*          uuid → Run.id
-  step_id          uuid → Step.id | null
-  tenant_id*       uuid
-  principal*       Principal
-  occurred_at*     timestamp
-  logical_clock*   integer (monotonic per run, used for ordering and replay)
-  payload*         dict
-```
-
----
-
-### Event payloads
+**KnowledgeChunk schema:**
 
 ```
-RunCreated
-  agent_id*        uuid
-  version_id*      uuid
-  session_id*      uuid
-  turn_id*         uuid
-  user_input*      string
+Input:  document_id, content, chunk_index, metadata
+Output: chunk_id, content_hash, embedding,
+        source_url | null, captured_at, expires_at | null, tenant_id
+```
 
-StepStarted
-  step_index*      integer
+**KnowledgeQuery schema:**
 
-ContextAssembled
-  fragment_ids*    list[uuid]
-  total_tokens*    integer
-  sources*         list[FragmentSource]
-
-ModelRequested
-  request_id*      uuid
-  provider*        string
-  model_id*        string
-  input_tokens*    integer
-
-ModelResponded
-  response_id*     uuid
-  stop_reason*     string
-  input_tokens*    integer
-  output_tokens*   integer
-  total_tokens*    integer
-  cost_usd*        float
-  latency_ms*      integer
-
-ActionProposed
-  proposal_id*     uuid
-  type*            ProposalType
-  tool_name        string | null
-
-PolicyDecided
-  decision_id*     uuid
-  proposal_id*     uuid
-  decision*        Decision
-  decided_by*      string
-  reason           string | null
-
-ToolCallIntended                    ← WRITTEN BEFORE EXECUTION
-  tool_call_id*    uuid
-  tool_name*       string
-  tool_version*    string
-  args*            dict
-  dedup_key*       string
-
-ToolCallCompleted
-  tool_call_id*    uuid
-  result_id*       uuid
-  status*          ToolResultStatus
-  latency_ms*      integer
-
-UnknownOutcome                      ← crash between intended and completed
-  tool_call_id*    uuid
-  dedup_key*       string
-  recovery_policy* RecoveryPolicy
-
-ObservationRecorded
-  observation_id*  uuid
-  source*          ObservationSource
-  fragment_id*     uuid
-
-StepCompleted
-  step_index*      integer
-  outcome*         string (tool_call | final_answer | error)
-
-BudgetDebited
-  dimension*       string (steps | model_calls | tokens | cost | wall_time | tool_calls | retries)
-  amount*          float
-  remaining*       float
-
-RunCompleted
-  final_answer*    string
-  steps_taken*     integer
-  total_cost_usd*  float
-  total_tokens*    integer
-  wall_ms*         integer
-
-RunFailed
-  error_code*      string
-  error_message*   string
-  recoverable*     bool
-
-HumanInputRequested
-  request_id*      uuid
-  prompt*          string
-  context          string | null
-  timeout_seconds  integer | null
-
-HumanInputReceived
-  request_id*      uuid
-  response*        string
-  responded_by*    uuid
+```
+Input:  query_text | embedding, limit, min_relevance, max_age_seconds | null
+Output: list of KnowledgeChunk with relevance_score and provenance
 ```
 
 ---
 
-## Reasoning schemas (Stage C — gated by evaluation)
+## Topic 26 — Security and Adversarial Robustness
+
+1. The threat model for agentic systems — who can attack and how
+2. Prompt injection — must be tested continuously from Topic 6, not only at hardening time
+3. Malicious tool output — a tool returns instructions disguised as data
+4. Malformed model output — unexpected shapes, oversized responses
+5. Resource exhaustion attacks — token, cost, step, time
+6. Infinite loops and runaway agents
+7. Data exfiltration — agent tricked into leaking information
+8. Credential abuse — agent tricked into misusing its access
+9. Duplicate execution attacks
+10. Worker compromise
+11. How to test all of the above systematically and continuously
 
 ---
 
-### GoalAnalysis
+## Topic 27 — Reliability Testing
 
-```
-INPUT
-  user_input*              string
-  conversation_history     list[Message]
-  agent_context            dict
-
-OUTPUT
-  intent*                  string
-  constraints*             list[string]
-  context*                 dict
-  success_criteria*        list[string]
-  ambiguities              list[Ambiguity]
-    field                  string
-    description            string
-    clarification_needed   bool
-  confidence*              float (0.0–1.0)
-```
+1. The difference between unit tests, integration tests and reliability tests
+2. Process kill at every meaningful point in the loop — not just once
+3. Network failure injection
+4. Database failure injection
+5. Concurrent worker collision scenarios
+6. Context overflow scenarios
+7. The goal — know exactly how your system fails, not hope it handles failure gracefully
 
 ---
 
-### TaskGraph
+## Topic 28 — Production Engineering
 
-```
-INPUT
-  goal_analysis*   GoalAnalysis
-
-OUTPUT
-  tasks*           list[Task]
-    id*            uuid
-    name*          string
-    description*   string
-    input_schema*  JSONSchema
-    output_schema* JSONSchema
-    depends_on*    list[uuid → Task.id]
-    task_type      string (research | action | synthesis | verification)
-  dependency_graph* dict[uuid → list[uuid]]
-  validation*      TaskGraphValidation
-    valid          bool
-    cycles         list[list[uuid]]
-    missing_inputs list[uuid]
-    errors         list[string]
-```
+1. Multi-tenancy — isolating one customer's data and execution from another completely
+2. Row-level security — enforcing tenancy at the database layer, not the application layer
+3. Secrets management — credentials the agent uses to call tools
+4. Schema migrations — changing persisted data safely after the system is live
+5. Performance — where the bottlenecks actually are in a real agent system
+6. Horizontal scaling — more workers, more throughput
+7. API design — how external systems talk to the agent
+8. Operational runbooks — what to do when something goes wrong at 2am
+9. Alerting — what signals actually matter vs what is noise
+10. Cost controls — preventing runaway spend in production
 
 ---
 
-### ExecutionPlan
+## Topic 29 — Existing Frameworks and Ecosystem
 
-```
-INPUT
-  task_graph*      TaskGraph
-  strategy*        ExecutionStrategy (react | plan_and_execute | reflection)
-
-OUTPUT
-  groups*          list[ExecutionGroup]
-    id*            uuid
-    type*          GroupType (sequential | parallel)
-    task_ids*      list[uuid → Task.id]
-    depends_on*    list[uuid → ExecutionGroup.id]
-  strategy*        ExecutionStrategy
-  estimated_steps  integer
-  estimated_cost   float
-  replan_triggers* list[string]
-  plan_valid*      bool
-  validation_errors list[string]
-```
+1. Why you study frameworks after building from scratch, not before
+2. LangChain — what it abstracts and what it hides from you
+3. LangGraph — graph-based orchestration, how its checkpointing compares to event sourcing
+4. LlamaIndex — knowledge and retrieval focus
+5. Temporal and Restate — durable execution engines, the closest prior art to what you built
+6. How to evaluate any framework — what does it give you, what does it cost you, what does it hide
+7. When to use a framework and when to build
 
 ---
 
-### VerificationResult
+## Topic 30 — Multi-Agent Systems
 
-```
-INPUT
-  observation*         Observation
-  goal*                GoalAnalysis
-  prior_observations*  list[Observation]
-
-OUTPUT
-  valid*               bool
-  goal_met*            bool
-  contradictions*      list[Contradiction]
-    observation_id     uuid
-    prior_id           uuid
-    description        string
-  confidence*          float (0.0–1.0)
-  action*              VerificationAction (proceed | retry | replan | escalate)
-  reason               string | null
-```
+1. What a multi-agent system is
+2. Orchestrator and subagent patterns
+3. Agent-to-agent communication
+4. Trust between agents — one agent calling another is still untrusted input
+5. Shared state vs isolated state across agents
+6. Failure propagation — what happens when a subagent fails
+7. Cost and observability across agent boundaries
+8. When multi-agent helps and when it only adds complexity
 
 ---
 
-## Scale schemas (Stage D)
+## Topic 31 — Common Agent Architecture Patterns
+
+1. Router pattern — classify input, send to the right handler
+2. Planner-executor pattern — plan first, execute second, keep them separate
+3. Supervisor pattern — one agent oversees and corrects others
+4. Orchestrator-worker pattern — coordinator delegates to specialised workers
+5. Hierarchical agents — agents managing agents managing agents
+6. Event-driven agents — agents that wake up in response to external events
+7. Sequential vs parallel agent workflows — when each is appropriate
+8. How to choose the right architecture for the problem
 
 ---
 
-### HumanInputRequest
+## Topic 32 — Model Context Protocol (MCP)
 
-```
-INPUT
-  run_id*          uuid → Run.id
-  step_id*         uuid → Step.id
-  prompt*          string
-  context          string | null
-  timeout_seconds  integer | null
-
-OUTPUT (persisted)
-  request_id*      uuid
-  run_id*          uuid
-  step_id*         uuid
-  prompt*          string
-  context          string | null
-  timeout_seconds  integer | null
-  status*          HumanRequestStatus (pending | responded | timed_out | cancelled)
-  response         string | null
-  responded_by     uuid | null
-  requested_at*    timestamp
-  responded_at     timestamp | null
-  tenant_id*       uuid
-```
+1. What MCP is and why it exists — a standard interface between agents and the outside world
+2. The three roles — host, client, server
+3. MCP architecture — how the pieces connect
+4. Tools — capabilities a server exposes to the agent
+5. Resources — data a server makes available
+6. Prompts — reusable prompt templates a server provides
+7. Capability discovery — how a client learns what a server offers
+8. Transports — how client and server communicate
+9. Authentication and authorisation
+10. Building a simple MCP server
+11. Connecting an MCP client to an agent
+12. MCP security — what can go wrong
+13. Treating MCP tool results as untrusted — always data only, same as any tool
 
 ---
 
-### Lease
+## Topic 33 — Agent-to-Agent Interoperability (A2A)
 
 ```
-INPUT
-  run_id*              uuid → Run.id
-  worker_id*           string
-  lease_duration_ms*   integer
-
-OUTPUT (persisted)
-  lease_id*            uuid
-  run_id*              uuid
-  worker_id*           string
-  fencing_token*       integer (monotonic — higher value always wins conflicts)
-  acquired_at*         timestamp
-  expires_at*          timestamp
-  renewed_at           timestamp | null
-  released_at          timestamp | null
-  status*              LeaseStatus (active | expired | released | stolen)
-  tenant_id*           uuid
+MCP   Agent → Tools / Data
+A2A   Agent → Agent
 ```
+
+1. Why independent agents need interoperability standards
+2. Agent discovery — how one agent finds another
+3. Capability advertisement — how agents describe what they can do
+4. Task delegation — handing a subtask to another agent
+5. Agent-to-agent messaging format and protocol
+6. Agent identity and trust — another agent's output is still untrusted input
+7. A2A protocol basics
+8. MCP vs A2A — when to use which
 
 ---
 
-## Knowledge schemas (Stage E)
+## Topic 34 — Permissions, Identity and Sandboxing
+
+1. Authentication vs authorisation — the difference and why it matters
+2. Agent identity — who the agent is when it calls a tool
+3. User identity vs execution identity — they are not the same
+4. Least-privilege permissions — the agent should have only what it needs for this task
+5. Tool-level permissions — different tools need different access scopes
+6. Scoped credentials — credentials that expire or are limited to one action
+7. Permission checks before every tool execution
+8. Sandboxing untrusted execution — isolating any code the agent runs
+9. Filesystem and network isolation
+10. Approval gates for dangerous or irreversible actions
+11. Audit trails — every privileged action recorded permanently
 
 ---
 
-### MemoryRecord
+## Topic 35 — Agent Triggers and Event-Driven Execution
 
-```
-INPUT
-  content*         string
-  memory_type*     MemoryType (short_term | long_term | episodic | semantic)
-  source*          string
-  agent_id*        uuid → Agent.id
-  principal*       Principal
-  expires_at       timestamp | null
-
-OUTPUT (persisted)
-  memory_id*       uuid
-  content_hash*    string (sha256)
-  embedding*       list[float] (vector representation)
-  content*         string
-  memory_type*     MemoryType
-  source*          string
-  agent_id*        uuid
-  principal*       Principal
-  provenance*      Provenance
-    run_id         uuid | null
-    step_id        uuid | null
-    captured_at    timestamp
-  created_at*      timestamp
-  expires_at       timestamp | null
-  tenant_id*       uuid
-```
+1. User-triggered agents — the simplest case, a person clicks run
+2. API-triggered agents — another system starts the run programmatically
+3. Webhooks — an external event causes a run to start
+4. Scheduled agents — running on a timer or cron
+5. Event-driven agents — reacting to events arriving on a queue
+6. Queue-triggered execution — a worker pulls the next runnable item
+7. Background execution — long-running work with no user waiting for a response
+8. Event deduplication — what if the same trigger arrives twice
+9. Idempotent event handling — processing the same trigger more than once safely
 
 ---
 
-### MemoryQuery
+## Topic 36 — Production Model Optimization
 
-```
-INPUT
-  query_text       string | null
-  embedding        list[float] | null   (one of query_text or embedding required)
-  memory_types     list[MemoryType] | null
-  agent_id*        uuid → Agent.id
-  limit*           integer
-  min_relevance    float (0.0–1.0)
-  max_age_seconds  integer | null
-
-OUTPUT
-  results*         list[MemoryResult]
-    memory*        MemoryRecord
-    relevance*     float (0.0–1.0)
-    rank*          integer
-```
+1. Model routing — sending different kinds of requests to different models
+2. Choosing models by task — classification and routing do not need the most expensive model
+3. The decide interface — fast structured decisions with confidence scores for routing and verification
+4. Fallback models — what to do when the primary model is unavailable
+5. Prompt caching — reusing computation for repeated context
+6. Semantic caching — returning cached results for semantically similar inputs
+7. Tool result caching — not re-running tools whose outputs have not changed
+8. Batch inference — grouping requests for efficiency
+9. Cost vs latency vs quality — the tradeoff every production agent must navigate explicitly
 
 ---
 
-### KnowledgeChunk
+## Time estimate — 3 month plan
+
+Assuming 3–4 hours per day, 5 days a week. 12 weeks total.
 
 ```
-INPUT
-  document_id*     uuid
-  content*         string
-  chunk_index*     integer
-  metadata         dict
-  source_url       string | null
-  expires_at       timestamp | null
-
-OUTPUT (persisted)
-  chunk_id*        uuid
-  document_id*     uuid
-  content_hash*    string (sha256)
-  embedding*       list[float]
-  content*         string
-  chunk_index*     integer
-  metadata         dict
-  source_url       string | null
-  captured_at*     timestamp
-  expires_at       timestamp | null
-  tenant_id*       uuid
+Week 1     Topics 1, 2, 3          What an agent is and how the loop works
+Week 2     Topics 4, 5             Contracts, schemas, model interaction
+Week 3     Topic 6                 Tool system — larger than it looks, do not rush
+Week 4     Topics 7, 8, 9          Trust boundary, state, lifecycle
+Week 5     Topics 10, 11           Budgets and failure — build both and break both
+Week 6     Topic 12                Durable execution — give it the full week
+Week 7     Topics 13, 14           Observability and evaluation
+                                   ↑ Foundation complete ↑
+Week 8     Topics 15, 16, 17, 18   Reasoning — only if evaluation proves you need it
+Week 9     Topics 19, 20, 21       Context engine, versioning, human in the loop
+Week 10    Topics 22, 23, 24, 25   Streaming, workers, memory, RAG
+Week 11    Topics 26, 27, 28       Security, reliability, production hardening
+Week 12    Topics 29–36            Frameworks, patterns, MCP, A2A, optimization
 ```
+
+### If time runs short
+
+```
+Must complete      Topics 1–14    Weeks 1–7
+Should complete    Topics 15–21   Weeks 8–9
+Complete if able   Topics 22–28   Weeks 10–11
+Nice to have       Topics 29–36   Week 12
+```
+
+Topic 12 will take most students longer than one week. If you need ten days instead of seven, take them. Every topic after it depends on it being understood properly.
 
 ---
 
-### KnowledgeQuery
+## Definition of done — per topic
 
-```
-INPUT
-  query_text       string | null
-  embedding        list[float] | null   (one of query_text or embedding required)
-  limit*           integer
-  min_relevance    float (0.0–1.0)
-  max_age_seconds  integer | null
-  document_ids     list[uuid] | null
+A topic is not done when you finish reading it. It is done when:
 
-OUTPUT
-  results*         list[KnowledgeResult]
-    chunk*         KnowledgeChunk
-    relevance*     float (0.0–1.0)
-    rank*          integer
-    provenance*    string (source_url or document_id)
-```
+- You can explain the core concept out loud without notes
+- You have written code that demonstrates it working
+- You have broken it deliberately and watched what happened
+- You can answer the question a senior engineer would ask about your design choices
 
----
-
-## All enums
-
-```
-RunStatus
-  CREATED | RUNNING | WAITING | PAUSED | COMPLETED | FAILED | CANCELLED
-
-StepStatus
-  RUNNING | COMPLETED | FAILED
-
-ProposalType
-  TOOL_CALL | FINAL_ANSWER
-
-Decision
-  APPROVED | REJECTED | MODIFIED
-
-FragmentSource
-  SYSTEM_INSTRUCTIONS | AGENT_INSTRUCTIONS | USER_INPUT
-  CONVERSATION_HISTORY | TOOL_RESULT | MEMORY | KNOWLEDGE | RUN_STATE
-
-AuthorityLevel
-  CAN_INSTRUCT | DATA_ONLY
-
-TrustLevel
-  TRUSTED | SEMI_TRUSTED | UNTRUSTED
-
-EffectClass
-  READ | CREATE | UPDATE | DELETE | EXTERNAL
-
-IdempotencyClass
-  NATURAL | CLIENT_KEY | NONE
-
-ReversibilityClass
-  REVERSIBLE | COMPENSATABLE | IRREVERSIBLE
-
-RecoveryPolicy
-  RETRY_SAFE | RECONCILE | MANUAL
-
-ToolResultStatus
-  SUCCESS | ERROR | TIMEOUT | CANCELLED | UNKNOWN
-
-ToolErrorType
-  VALIDATION_ERROR | TIMEOUT | TOOL_FAILURE | UNKNOWN_OUTCOME
-
-ObservationSource
-  TOOL_RESULT | MODEL_RESPONSE | HUMAN_INPUT | SYSTEM
-
-StopReason
-  END_TURN | TOOL_USE | MAX_TOKENS | STOP_SEQUENCE
-
-MemoryType
-  SHORT_TERM | LONG_TERM | EPISODIC | SEMANTIC
-
-HumanRequestStatus
-  PENDING | RESPONDED | TIMED_OUT | CANCELLED
-
-LeaseStatus
-  ACTIVE | EXPIRED | RELEASED | STOLEN
-
-ExecutionStrategy
-  REACT | PLAN_AND_EXECUTE | REFLECTION
-
-GroupType
-  SEQUENTIAL | PARALLEL
-
-VerificationAction
-  PROCEED | RETRY | REPLAN | ESCALATE
-
-QuestionType
-  CHOICE | SCORE | BOOLEAN
-```
-
----
-
-## State machine — valid transitions
-
-```
-CREATED    → RUNNING
-RUNNING    → WAITING | PAUSED | COMPLETED | FAILED | CANCELLED
-WAITING    → RUNNING | CANCELLED | FAILED
-PAUSED     → RUNNING | CANCELLED
-COMPLETED  → (terminal — no further transitions)
-FAILED     → (terminal — no further transitions)
-CANCELLED  → (terminal — no further transitions)
-```
-
-Illegal transitions are rejected at write time, not caught at read time.
-
----
-
-## Recovery matrix
-
-```
-Error class              Recovery policy
-──────────────────────   ──────────────────────────────────────
-ModelTransientError      retry with exponential backoff
-ModelInvalidOutput       retry with repair prompt
-ToolValidationError      fail (model proposed invalid args)
-ToolTimeout              retry or reconcile (per tool policy)
-ToolFailure              retry or escalate (per tool policy)
-UnknownToolOutcome       reconcile or manual (per tool policy)
-BudgetExceeded           fail
-LeaseLost                requeue run
-RunCancelled             fail
-```
-
----
-
-## Truth model
-
-```
-Event log   = truth          (append-only, never modified)
-AgentState  = projection     (derived from events, never stored as primary)
-Checkpoint  = optimisation   (shortcut for projection, not truth)
-```
-
----
-
-## Execution modes
-
-```
-REPLAY   reconstruct from event log only
-         no model call, no tool call, ever
-         same code, same log, deterministic
-
-RESUME   reconstruct history from log
-         then continue with new durable steps
-         real model and tool calls allowed
-
-EVAL     new code version
-         recorded model and tool responses stand in for real ones
-         no network, no real calls
-         non-determinism comes from the log, logic comes from HEAD
-```
-
-Entering EVAL against a production log requires an explicit flag. These three modes are enforced in code, not in documentation.
-
----
-
-## Intent before effect rule
-
-```
-1. Write ToolCallIntended (with dedup_key) to the event log
-2. Execute the tool
-3. Write ToolCallCompleted (or UnknownOutcome if process dies between 1 and 3)
-
-On restart:
-  ToolCallIntended with no matching ToolCallCompleted
-  → trigger that tool's declared recovery policy
-  → never silently re-execute
-```
-
-UnknownOutcome is a first-class event. It is not an exception. It is not a special case. It is the expected result of a crash between steps 1 and 3, and every tool's recovery policy must handle it.
+The last item is the one that matters most. Understanding that survives a hard question is the only kind worth having.
