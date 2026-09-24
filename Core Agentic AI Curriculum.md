@@ -1,3897 +1,1195 @@
-**# Agent Core — Complete Schema Reference**
-
-  
+# Agent Core — Complete Schema Reference
 
 All contracts, input schemas, output schemas, enums, event payloads, and the full contract tree. This is the frozen domain model. Nothing here changes without a migration plan.
 
-  
+---
 
-\---
+## The contract tree
 
-  
-
-**## The contract tree**
-
-  
-
-\`\`\`
-
-  
-
+```
 Agent
-
-  
-
-└── AgentVersion (immutable — instructions, model, tools, limits)
-
-  
-
-└── Session (one conversation)
-
-  
-
-└── Turn (one user message + agent response)
-
-  
-
-└── Run (one execution attempt)
-
-  
-
-└── Step (one iteration of the loop)
-
-  
-
-│
-
-  
-
-├── Context
-
-  
-
-│     └── ContextFragment (one piece of context)
-
-  
-
-│           ├── source
-
-  
-
-│           ├── instruction_authority
-
-  
-
-│           ├── content_trust
-
-  
-
-│           ├── content_hash
-
-  
-
-│           └── captured_at
-
-  
-
-│
-
-  
-
-├── ModelRequest
-
-  
-
-│     └── Message[]
-
-  
-
-│           └── ContentBlock[]
-
-  
-
-│
-
-  
-
-├── ModelResponse
-
-  
-
-│     ├── ContentBlock[]
-
-  
-
-│     └── TokenUsage
-
-  
-
-│
-
-  
-
-└── ActionProposal
-
-  
-
-│
-
-  
-
-├── [type: TOOL_CALL]
-
-  
-
-│       ↓
-
-  
-
-│   PolicyGate
-
-  
-
-│       ↓
-
-  
-
-│   PolicyDecision
-
-  
-
-│   ├── APPROVED
-
-  
-
-│   │       ↓
-
-  
-
-│   │   ToolCall
-
-  
-
-│   │       ↓
-
-  
-
-│   │   ToolResult
-
-  
-
-│   │       ↓
-
-  
-
-│   │   Observation
-
-  
-
-│   │       ↓
-
-  
-
-│   │   next Step
-
-  
-
-│   │
-
-  
-
-│   ├── REJECTED
-
-  
-
-│   │       ↓
-
-  
-
-│   │   back to model with reason
-
-  
-
-│   │
-
-  
-
-│   └── MODIFIED
-
-  
-
-│           ↓
-
-  
-
-│       ToolCall (with amended args)
-
-  
-
-│
-
-  
-
-└── [type: FINAL_ANSWER]
-
-  
-
-↓
-
-  
-
-Run completes
-
-  
-
-↓
-
-  
-
-Turn completes
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Cross-cutting fields**
-
-  
+  └── AgentVersion (immutable — instructions, model, tools, limits)
+        └── Session (one conversation)
+              └── Turn (one user message + agent response)
+                    └── Run (one execution attempt)
+                          └── Step (one iteration of the loop)
+                                │
+                                ├── Context
+                                │     └── ContextFragment (one piece of context)
+                                │           ├── source
+                                │           ├── instruction_authority
+                                │           ├── content_trust
+                                │           ├── content_hash
+                                │           └── captured_at
+                                │
+                                ├── ModelRequest
+                                │     └── Message[]
+                                │           └── ContentBlock[]
+                                │
+                                ├── ModelResponse
+                                │     ├── ContentBlock[]
+                                │     └── TokenUsage
+                                │
+                                └── ActionProposal
+                                      │
+                                      ├── [type: TOOL_CALL]
+                                      │       ↓
+                                      │   PolicyGate
+                                      │       ↓
+                                      │   PolicyDecision
+                                      │   ├── APPROVED
+                                      │   │       ↓
+                                      │   │   ToolCall
+                                      │   │       ↓
+                                      │   │   ToolResult
+                                      │   │       ↓
+                                      │   │   Observation
+                                      │   │       ↓
+                                      │   │   next Step
+                                      │   │
+                                      │   ├── REJECTED
+                                      │   │       ↓
+                                      │   │   back to model with reason
+                                      │   │
+                                      │   └── MODIFIED
+                                      │           ↓
+                                      │       ToolCall (with amended args)
+                                      │
+                                      └── [type: FINAL_ANSWER]
+                                              ↓
+                                          Run completes
+                                              ↓
+                                          Turn completes
+```
+
+---
+
+## Cross-cutting fields
 
 Every persisted record carries these fields. They are not repeated in each schema below but they are always present.
 
-  
+```
+tenant_id*       uuid       — which tenant owns this record
+principal*       Principal  — who triggered this action
+  user_id        uuid
+  tenant_id      uuid
+  role           string
+created_at*      timestamp  — when the record was created
+```
 
-\`\`\`
+---
 
-  
+## Core entity schemas
 
-tenant_id\*       uuid       — which tenant owns this record
+---
 
-  
+### Agent
 
-principal\*       Principal  — who triggered this action
-
-  
-
-user_id        uuid
-
-  
-
-tenant_id      uuid
-
-  
-
-role           string
-
-  
-
-created_at\*      timestamp  — when the record was created
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Core entity schemas**
-
-  
-
-\---
-
-  
-
-**### Agent**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to create)
-
-  
-
-name\*            string
-
-  
-
-description      string
-
-  
-
-tenant_id\*       uuid
-
-  
+  name*            string
+  description      string
+  tenant_id*       uuid
 
 OUTPUT (persisted)
+  id*              uuid
+  name*            string
+  description      string
+  current_version  uuid → AgentVersion.id | null
+  created_at*      timestamp
+  updated_at*      timestamp
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+### AgentVersion
 
-  
-
-name\*            string
-
-  
-
-description      string
-
-  
-
-current_version  uuid → AgentVersion.id | null
-
-  
-
-created_at\*      timestamp
-
-  
-
-updated_at\*      timestamp
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### AgentVersion**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to create)
-
-  
-
-agent_id\*            uuid → Agent.id
-
-  
-
-instructions\*        string
-
-  
-
-model_config\*        ModelConfig
-
-  
-
-tools\*               list[uuid → ToolDefinition.id]
-
-  
-
-limits\*              BudgetConfig
-
-  
-
-context_config       ContextConfig
-
-  
-
-granted_authority    GrantedAuthority
-
-  
+  agent_id*            uuid → Agent.id
+  instructions*        string
+  model_config*        ModelConfig
+  tools*               list[uuid → ToolDefinition.id]
+  limits*              BudgetConfig
+  context_config       ContextConfig
+  granted_authority    GrantedAuthority
 
 OUTPUT (persisted, immutable after creation)
-
-  
-
-id\*                  uuid
-
-  
-
-agent_id\*            uuid → Agent.id
-
-  
-
-version_number\*      integer (monotonic, never changes)
-
-  
-
-instructions\*        string
-
-  
-
-model_config\*        ModelConfig
-
-  
-
-provider\*          string
-
-  
-
-model_id\*          string
-
-  
-
-temperature        float
-
-  
-
-max_tokens         integer
-
-  
-
-tools\*               list[uuid → ToolDefinition.id]
-
-  
-
-limits\*              BudgetConfig
-
-  
-
-max_steps          integer
-
-  
-
-max_model_calls    integer
-
-  
-
-max_tokens         integer
-
-  
-
-max_cost_usd       float
-
-  
-
-max_wall_seconds   integer
-
-  
-
-max_tool_calls     integer
-
-  
-
-max_retries        integer
-
-  
-
-context_config       ContextConfig
-
-  
-
-max_tokens         integer
-
-  
-
-sources            list[ContextSourceConfig]
-
-  
-
-source           FragmentSource
-
-  
-
-max_tokens       integer
-
-  
-
-priority         integer
-
-  
-
-granted_authority    GrantedAuthority
-
-  
-
-user_can_extend    bool
-
-  
-
-allowed_tools      list[string]
-
-  
-
-created_at\*          timestamp
-
-  
-
-tenant_id\*           uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### Session**
-
-  
-
-\`\`\`
-
-  
-
+  id*                  uuid
+  agent_id*            uuid → Agent.id
+  version_number*      integer (monotonic, never changes)
+  instructions*        string
+  model_config*        ModelConfig
+    provider*          string
+    model_id*          string
+    temperature        float
+    max_tokens         integer
+  tools*               list[uuid → ToolDefinition.id]
+  limits*              BudgetConfig
+    max_steps          integer
+    max_model_calls    integer
+    max_tokens         integer
+    max_cost_usd       float
+    max_wall_seconds   integer
+    max_tool_calls     integer
+    max_retries        integer
+  context_config       ContextConfig
+    max_tokens         integer
+    sources            list[ContextSourceConfig]
+      source           FragmentSource
+      max_tokens       integer
+      priority         integer
+  granted_authority    GrantedAuthority
+    user_can_extend    bool
+    allowed_tools      list[string]
+  created_at*          timestamp
+  tenant_id*           uuid
+```
+
+---
+
+### Session
+
+```
 INPUT (to create)
-
-  
-
-agent_id\*        uuid → Agent.id
-
-  
-
-version_id\*      uuid → AgentVersion.id
-
-  
-
-principal\*       Principal
-
-  
-
-metadata         dict
-
-  
+  agent_id*        uuid → Agent.id
+  version_id*      uuid → AgentVersion.id
+  principal*       Principal
+  metadata         dict
 
 OUTPUT (persisted)
+  id*              uuid
+  agent_id*        uuid → Agent.id
+  version_id*      uuid → AgentVersion.id
+  principal*       Principal
+  metadata         dict
+  created_at*      timestamp
+  ended_at         timestamp | null
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+### Turn
 
-  
-
-agent_id\*        uuid → Agent.id
-
-  
-
-version_id\*      uuid → AgentVersion.id
-
-  
-
-principal\*       Principal
-
-  
-
-metadata         dict
-
-  
-
-created_at\*      timestamp
-
-  
-
-ended_at         timestamp | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### Turn**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to create)
-
-  
-
-session_id\*      uuid → Session.id
-
-  
-
-index\*           integer (position in session, 0-based)
-
-  
-
-user_input\*      string
-
-  
+  session_id*      uuid → Session.id
+  index*           integer (position in session, 0-based)
+  user_input*      string
 
 OUTPUT (persisted)
+  id*              uuid
+  session_id*      uuid → Session.id
+  index*           integer
+  user_input*      string
+  created_at*      timestamp
+  completed_at     timestamp | null
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+### Run
 
-  
-
-session_id\*      uuid → Session.id
-
-  
-
-index\*           integer
-
-  
-
-user_input\*      string
-
-  
-
-created_at\*      timestamp
-
-  
-
-completed_at     timestamp | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### Run**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to create)
-
-  
-
-turn_id\*         uuid → Turn.id
-
-  
-
-session_id\*      uuid → Session.id
-
-  
-
-agent_id\*        uuid → Agent.id
-
-  
-
-version_id\*      uuid → AgentVersion.id
-
-  
-
-principal\*       Principal
-
-  
+  turn_id*         uuid → Turn.id
+  session_id*      uuid → Session.id
+  agent_id*        uuid → Agent.id
+  version_id*      uuid → AgentVersion.id
+  principal*       Principal
 
 OUTPUT (persisted)
+  id*              uuid
+  turn_id*         uuid → Turn.id
+  session_id*      uuid → Session.id
+  agent_id*        uuid → Agent.id
+  version_id*      uuid → AgentVersion.id
+  principal*       Principal
+  status*          RunStatus
+  created_at*      timestamp
+  started_at       timestamp | null
+  completed_at     timestamp | null
+  final_answer     string | null
+  error            RunError | null
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+### Step
 
-  
-
-turn_id\*         uuid → Turn.id
-
-  
-
-session_id\*      uuid → Session.id
-
-  
-
-agent_id\*        uuid → Agent.id
-
-  
-
-version_id\*      uuid → AgentVersion.id
-
-  
-
-principal\*       Principal
-
-  
-
-status\*          RunStatus
-
-  
-
-created_at\*      timestamp
-
-  
-
-started_at       timestamp | null
-
-  
-
-completed_at     timestamp | null
-
-  
-
-final_answer     string | null
-
-  
-
-error            RunError | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### Step**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to create)
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-index\*           integer (logical step number — used for replay, not wall time)
-
-  
+  run_id*          uuid → Run.id
+  index*           integer (logical step number — used for replay, not wall time)
 
 OUTPUT (persisted)
+  id*              uuid
+  run_id*          uuid → Run.id
+  index*           integer
+  status*          StepStatus
+  wall_clock*      timestamp
+  created_at*      timestamp
+  completed_at     timestamp | null
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+## Context schemas
 
-  
+---
 
-run_id\*          uuid → Run.id
+### ContextFragment
 
-  
-
-index\*           integer
-
-  
-
-status\*          StepStatus
-
-  
-
-wall_clock\*      timestamp
-
-  
-
-created_at\*      timestamp
-
-  
-
-completed_at     timestamp | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Context schemas**
-
-  
-
-\---
-
-  
-
-**### ContextFragment**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to create)
-
-  
-
-source\*              FragmentSource
-
-  
-
-instruction_authority\* AuthorityLevel
-
-  
-
-content_trust\*       TrustLevel
-
-  
-
-content\*             string
-
-  
-
-metadata             dict
-
-  
+  source*              FragmentSource
+  instruction_authority* AuthorityLevel
+  content_trust*       TrustLevel
+  content*             string
+  metadata             dict
 
 OUTPUT (persisted)
+  fragment_id*         uuid
+  source*              FragmentSource
+  instruction_authority* AuthorityLevel
+  content_trust*       TrustLevel
+  content_hash*        string (sha256 — content addressed, bytes stored once)
+  content              string (may be a reference to blob store)
+  captured_at*         timestamp
+  token_count          integer | null
+  metadata             dict
+  tenant_id*           uuid
+```
 
-  
+---
 
-fragment_id\*         uuid
+### ContextPlan
 
-  
-
-source\*              FragmentSource
-
-  
-
-instruction_authority\* AuthorityLevel
-
-  
-
-content_trust\*       TrustLevel
-
-  
-
-content_hash\*        string (sha256 — content addressed, bytes stored once)
-
-  
-
-content              string (may be a reference to blob store)
-
-  
-
-captured_at\*         timestamp
-
-  
-
-token_count          integer | null
-
-  
-
-metadata             dict
-
-  
-
-tenant_id\*           uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### ContextPlan**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-available_fragments  list[ContextFragment]
-
-  
-
-token_budget\*        integer
-
-  
-
-priority_config      list[ContextSourceConfig]
-
-  
+  available_fragments  list[ContextFragment]
+  token_budget*        integer
+  priority_config      list[ContextSourceConfig]
 
 OUTPUT
+  selected_fragment_ids    list[uuid]
+  token_allocation         dict[FragmentSource → integer]
+  excluded_fragment_ids    list[ExcludedFragment]
+    fragment_id            uuid
+    reason                 string (budget | trust | priority)
+  total_tokens             integer
+```
 
-  
+---
 
-selected_fragment_ids    list[uuid]
+### ContextBuilder output (assembled context ready for ModelRequest)
 
-  
-
-token_allocation         dict[FragmentSource → integer]
-
-  
-
-excluded_fragment_ids    list[ExcludedFragment]
-
-  
-
-fragment_id            uuid
-
-  
-
-reason                 string (budget | trust | priority)
-
-  
-
-total_tokens             integer
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### ContextBuilder output (assembled context ready for ModelRequest)**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-context_plan         ContextPlan
-
-  
-
-fragment_store       FragmentStore
-
-  
+  context_plan         ContextPlan
+  fragment_store       FragmentStore
 
 OUTPUT
+  fragments*           list[ContextFragment] (ordered for the model)
+                       (all DATA_ONLY fragments structurally fenced
+                        from CAN_INSTRUCT regions — enforced here,
+                        nowhere else)
+  total_tokens*        integer
+  sources_included     list[FragmentSource]
+```
 
-  
+---
 
-fragments\*           list[ContextFragment] (ordered for the model)
+## Model schemas
 
-  
+---
 
-(all DATA_ONLY fragments structurally fenced
+### ModelRequest
 
-  
-
-from CAN_INSTRUCT regions — enforced here,
-
-  
-
-nowhere else)
-
-  
-
-total_tokens\*        integer
-
-  
-
-sources_included     list[FragmentSource]
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Model schemas**
-
-  
-
-\---
-
-  
-
-**### ModelRequest**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-provider\*        string
-
-  
-
-model_id\*        string
-
-  
-
-messages\*        list[Message]
-
-  
-
-tools            list[ToolDefinition] | null
-
-  
-
-temperature      float | null
-
-  
-
-max_tokens       integer | null
-
-  
+  provider*        string
+  model_id*        string
+  messages*        list[Message]
+  tools            list[ToolDefinition] | null
+  temperature      float | null
+  max_tokens       integer | null
 
 OUTPUT (persisted)
-
-  
-
-id\*              uuid
-
-  
-
-step_id\*         uuid → Step.id
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-provider\*        string
-
-  
-
-model_id\*        string
-
-  
-
-model_version    string | null
-
-  
-
-messages\*        list[Message]
-
-  
-
-role\*          string (system | user | assistant | tool)
-
-  
-
-content\*       string | list[ContentBlock]
-
-  
-
-tools            list[ToolDefinition] | null
-
-  
-
-temperature      float | null
-
-  
-
-max_tokens       integer | null
-
-  
-
-created_at\*      timestamp
-
-  
-
-tenant_id\*       uuid
-
-  
+  id*              uuid
+  step_id*         uuid → Step.id
+  run_id*          uuid → Run.id
+  provider*        string
+  model_id*        string
+  model_version    string | null
+  messages*        list[Message]
+    role*          string (system | user | assistant | tool)
+    content*       string | list[ContentBlock]
+  tools            list[ToolDefinition] | null
+  temperature      float | null
+  max_tokens       integer | null
+  created_at*      timestamp
+  tenant_id*       uuid
 
 ContentBlock
+  type*            string (text | tool_use | tool_result | image)
+  text             string | null
+  tool_use_id      string | null
+  tool_name        string | null
+  input            dict | null
+  output           string | null
+```
 
-  
+---
 
-type\*            string (text | tool_use | tool_result | image)
+### ModelResponse
 
-  
-
-text             string | null
-
-  
-
-tool_use_id      string | null
-
-  
-
-tool_name        string | null
-
-  
-
-input            dict | null
-
-  
-
-output           string | null
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### ModelResponse**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (from provider)
-
-  
-
-content\*         list[ContentBlock]
-
-  
-
-stop_reason\*     string
-
-  
-
-usage\*           TokenUsage
-
-  
-
-model_version\*   string
-
-  
+  content*         list[ContentBlock]
+  stop_reason*     string
+  usage*           TokenUsage
+  model_version*   string
 
 OUTPUT (persisted)
+  id*              uuid
+  request_id*      uuid → ModelRequest.id
+  step_id*         uuid → Step.id
+  run_id*          uuid → Run.id
+  provider*        string
+  model_id*        string
+  model_version*   string
+  content*         list[ContentBlock]
+  stop_reason*     StopReason
+  usage*           TokenUsage
+    input_tokens*  integer
+    output_tokens* integer
+    total_tokens*  integer
+  cost_usd*        float
+  latency_ms*      integer
+  created_at*      timestamp
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+### ModelProvider interface
 
-  
-
-request_id\*      uuid → ModelRequest.id
-
-  
-
-step_id\*         uuid → Step.id
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-provider\*        string
-
-  
-
-model_id\*        string
-
-  
-
-model_version\*   string
-
-  
-
-content\*         list[ContentBlock]
-
-  
-
-stop_reason\*     StopReason
-
-  
-
-usage\*           TokenUsage
-
-  
-
-input_tokens\*  integer
-
-  
-
-output_tokens\* integer
-
-  
-
-total_tokens\*  integer
-
-  
-
-cost_usd\*        float
-
-  
-
-latency_ms\*      integer
-
-  
-
-created_at\*      timestamp
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### ModelProvider interface**
-
-  
-
-\`\`\`
-
-  
-
+```
 generate(
-
-  
-
-INPUT:
-
-  
-
-messages\*        list[Message]
-
-  
-
-tools            list[ToolDefinition] | null
-
-  
-
-config\*          ModelConfig
-
-  
-
-OUTPUT:
-
-  
-
-ModelResponse
-
-  
-
+  INPUT:
+    messages*        list[Message]
+    tools            list[ToolDefinition] | null
+    config*          ModelConfig
+  OUTPUT:
+    ModelResponse
 )
-
-  
 
 generate_structured(
-
-  
-
-INPUT:
-
-  
-
-messages\*        list[Message]
-
-  
-
-output_schema\*   JSONSchema
-
-  
-
-config\*          ModelConfig
-
-  
-
-OUTPUT:
-
-  
-
-typed dict matching output_schema
-
-  
-
-+ ModelResponse metadata (usage, cost, latency)
-
-  
-
+  INPUT:
+    messages*        list[Message]
+    output_schema*   JSONSchema
+    config*          ModelConfig
+  OUTPUT:
+    typed dict matching output_schema
+    + ModelResponse metadata (usage, cost, latency)
 )
-
-  
 
 decide(
-
-  
-
-INPUT:
-
-  
-
-state\*           dict | string
-
-  
-
-questions\*       dict[name → Question]
-
-  
-
-type\*          QuestionType (choice | score | boolean)
-
-  
-
-instructions\*  string
-
-  
-
-criteria       dict | null (for choice type)
-
-  
-
-min            float | null (for score type)
-
-  
-
-max            float | null (for score type)
-
-  
-
-OUTPUT:
-
-  
-
-answers          dict[name → Answer]
-
-  
-
-choice         string | null
-
-  
-
-score          float | null
-
-  
-
-probability    float | null
-
-  
-
-confidence\*    float
-
-  
-
+  INPUT:
+    state*           dict | string
+    questions*       dict[name → Question]
+      type*          QuestionType (choice | score | boolean)
+      instructions*  string
+      criteria       dict | null (for choice type)
+      min            float | null (for score type)
+      max            float | null (for score type)
+  OUTPUT:
+    answers          dict[name → Answer]
+      choice         string | null
+      score          float | null
+      probability    float | null
+      confidence*    float
 )
+```
 
-  
+---
 
-\`\`\`
+## Action schemas
 
-  
+---
 
-\---
+### ActionProposal
 
-  
-
-**## Action schemas**
-
-  
-
-\---
-
-  
-
-**### ActionProposal**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (parsed from ModelResponse)
-
-  
-
-response_id\*     uuid → ModelResponse.id
-
-  
-
-type\*            ProposalType
-
-  
-
-tool_name        string | null
-
-  
-
-tool_args        dict | null
-
-  
-
-final_answer     string | null
-
-  
-
-reasoning        string | null
-
-  
+  response_id*     uuid → ModelResponse.id
+  type*            ProposalType
+  tool_name        string | null
+  tool_args        dict | null
+  final_answer     string | null
+  reasoning        string | null
 
 OUTPUT (persisted)
+  id*              uuid
+  step_id*         uuid → Step.id
+  run_id*          uuid → Run.id
+  response_id*     uuid → ModelResponse.id
+  type*            ProposalType
+  tool_name        string | null
+  tool_args        dict | null
+  final_answer     string | null
+  reasoning        string | null
+  created_at*      timestamp
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+### PolicyDecision
 
-  
-
-step_id\*         uuid → Step.id
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-response_id\*     uuid → ModelResponse.id
-
-  
-
-type\*            ProposalType
-
-  
-
-tool_name        string | null
-
-  
-
-tool_args        dict | null
-
-  
-
-final_answer     string | null
-
-  
-
-reasoning        string | null
-
-  
-
-created_at\*      timestamp
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### PolicyDecision**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to policy gate)
-
-  
-
-proposal\*        ActionProposal
-
-  
-
-run_context\*     RunContext
-
-  
-
-agent_version  AgentVersion
-
-  
-
-principal      Principal
-
-  
-
-budget_state   BudgetState
-
-  
+  proposal*        ActionProposal
+  run_context*     RunContext
+    agent_version  AgentVersion
+    principal      Principal
+    budget_state   BudgetState
 
 OUTPUT (persisted)
+  id*              uuid
+  proposal_id*     uuid → ActionProposal.id
+  run_id*          uuid → Run.id
+  decision*        Decision
+  reason           string | null
+  amended_args     dict | null (only when decision = MODIFIED)
+  decided_by*      string (policy engine id or "noop")
+  decided_at*      timestamp
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+## Tool schemas
 
-  
+---
 
-proposal_id\*     uuid → ActionProposal.id
+### ToolDefinition
 
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-decision\*        Decision
-
-  
-
-reason           string | null
-
-  
-
-amended_args     dict | null (only when decision = MODIFIED)
-
-  
-
-decided_by\*      string (policy engine id or "noop")
-
-  
-
-decided_at\*      timestamp
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Tool schemas**
-
-  
-
-\---
-
-  
-
-**### ToolDefinition**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to register)
-
-  
-
-name\*            string
-
-  
-
-version\*         string (semver)
-
-  
-
-description\*     string (written for a model to read, not a human)
-
-  
-
-input_schema\*    JSONSchema
-
-  
-
-output_schema\*   JSONSchema
-
-  
-
-effect\*          EffectClass
-
-  
-
-idempotency\*     IdempotencyClass
-
-  
-
-reversibility\*   ReversibilityClass
-
-  
-
-timeout_ms\*      integer
-
-  
+  name*            string
+  version*         string (semver)
+  description*     string (written for a model to read, not a human)
+  input_schema*    JSONSchema
+  output_schema*   JSONSchema
+  effect*          EffectClass
+  idempotency*     IdempotencyClass
+  reversibility*   ReversibilityClass
+  timeout_ms*      integer
 
 OUTPUT (persisted)
-
-  
-
-id\*              uuid
-
-  
-
-name\*            string
-
-  
-
-version\*         string
-
-  
-
-description\*     string
-
-  
-
-input_schema\*    JSONSchema
-
-  
-
-output_schema\*   JSONSchema
-
-  
-
-effect\*          EffectClass
-
-  
-
-idempotency\*     IdempotencyClass
-
-  
-
-reversibility\*   ReversibilityClass
-
-  
-
-recovery\*        RecoveryPolicy (derived — see derivation table below)
-
-  
-
-timeout_ms\*      integer
-
-  
-
-created_at\*      timestamp
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### Tool side-effect classification**
-
-  
-
-\`\`\`
-
-  
-
-effect         read | create | update | delete | external
-
-  
-
-idempotency    natural | client_key | none
-
-  
-
-reversibility  reversible | compensatable | irreversible
-
-  
-
-recovery       DERIVED from the three above — never declared independently
-
-  
-
-\`\`\`
-
-  
-
-**\*\*Recovery derivation table:\*\***
-
-  
-
-\`\`\`
-
-  
-
-effect     idempotency   reversibility    recovery
-
-  
-
-────────   ───────────   ─────────────    ────────────
-
-  
-
-read       natural       reversible       retry_safe
-
-  
-
-create     client_key    reversible       retry_safe
-
-  
-
-create     client_key    compensatable    retry_safe
-
-  
-
-update     client_key    reversible       retry_safe
-
-  
-
-update     client_key    compensatable    reconcile
-
-  
-
-create     none          irreversible     manual
-
-  
-
-delete     none          irreversible     manual
-
-  
-
-external   client_key    compensatable    reconcile
-
-  
-
-external   none          irreversible     manual
-
-  
-
-\`\`\`
-
-  
+  id*              uuid
+  name*            string
+  version*         string
+  description*     string
+  input_schema*    JSONSchema
+  output_schema*   JSONSchema
+  effect*          EffectClass
+  idempotency*     IdempotencyClass
+  reversibility*   ReversibilityClass
+  recovery*        RecoveryPolicy (derived — see derivation table below)
+  timeout_ms*      integer
+  created_at*      timestamp
+  tenant_id*       uuid
+```
+
+---
+
+### Tool side-effect classification
+
+```
+effect         read | create | update | delete | external
+idempotency    natural | client_key | none
+reversibility  reversible | compensatable | irreversible
+recovery       DERIVED from the three above — never declared independently
+```
+
+**Recovery derivation table:**
+
+```
+effect     idempotency   reversibility    recovery
+────────   ───────────   ─────────────    ────────────
+read       natural       reversible       retry_safe
+create     client_key    reversible       retry_safe
+create     client_key    compensatable    retry_safe
+update     client_key    reversible       retry_safe
+update     client_key    compensatable    reconcile
+create     none          irreversible     manual
+delete     none          irreversible     manual
+external   client_key    compensatable    reconcile
+external   none          irreversible     manual
+```
 
 Override is allowed only with a written justification field. The combination is validated at registry load.
 
-  
+---
 
-\---
+### ToolCall
 
-  
-
-**### ToolCall**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to executor)
-
-  
-
-decision_id\*     uuid → PolicyDecision.id
-
-  
-
-tool_name\*       string
-
-  
-
-tool_version\*    string
-
-  
-
-args\*            dict (validated against ToolDefinition.input_schema before this point)
-
-  
-
-dedup_key\*       string (written to ToolCallIntended event BEFORE execution)
-
-  
-
-principal\*       Principal
-
-  
+  decision_id*     uuid → PolicyDecision.id
+  tool_name*       string
+  tool_version*    string
+  args*            dict (validated against ToolDefinition.input_schema before this point)
+  dedup_key*       string (written to ToolCallIntended event BEFORE execution)
+  principal*       Principal
 
 OUTPUT (persisted)
+  id*              uuid
+  step_id*         uuid → Step.id
+  run_id*          uuid → Run.id
+  decision_id*     uuid → PolicyDecision.id
+  tool_name*       string
+  tool_version*    string
+  args*            dict
+  dedup_key*       string
+  started_at*      timestamp
+  principal*       Principal
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+### ToolResult
 
-  
-
-step_id\*         uuid → Step.id
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-decision_id\*     uuid → PolicyDecision.id
-
-  
-
-tool_name\*       string
-
-  
-
-tool_version\*    string
-
-  
-
-args\*            dict
-
-  
-
-dedup_key\*       string
-
-  
-
-started_at\*      timestamp
-
-  
-
-principal\*       Principal
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### ToolResult**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (from tool)
-
-  
-
-output           dict | null (validated against ToolDefinition.output_schema)
-
-  
-
-error            ToolError | null
-
-  
-
-status\*          ToolResultStatus
-
-  
+  output           dict | null (validated against ToolDefinition.output_schema)
+  error            ToolError | null
+  status*          ToolResultStatus
 
 OUTPUT (persisted)
+  id*              uuid
+  tool_call_id*    uuid → ToolCall.id
+  run_id*          uuid → Run.id
+  status*          ToolResultStatus
+  output           dict | null
+  error            ToolError | null
+    code*          string
+    message*       string
+    type*          ToolErrorType
+    recoverable*   bool
+  completed_at*    timestamp
+  latency_ms*      integer
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+### Observation
 
-  
-
-tool_call_id\*    uuid → ToolCall.id
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-status\*          ToolResultStatus
-
-  
-
-output           dict | null
-
-  
-
-error            ToolError | null
-
-  
-
-code\*          string
-
-  
-
-message\*       string
-
-  
-
-type\*          ToolErrorType
-
-  
-
-recoverable\*   bool
-
-  
-
-completed_at\*    timestamp
-
-  
-
-latency_ms\*      integer
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### Observation**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT (to record)
-
-  
-
-tool_call_id     uuid → ToolCall.id | null
-
-  
-
-source\*          ObservationSource
-
-  
-
-content\*         string (the observation text)
-
-  
+  tool_call_id     uuid → ToolCall.id | null
+  source*          ObservationSource
+  content*         string (the observation text)
 
 OUTPUT (persisted)
+  id*              uuid
+  step_id*         uuid → Step.id
+  run_id*          uuid → Run.id
+  tool_call_id     uuid → ToolCall.id | null
+  source*          ObservationSource
+  fragment*        ContextFragment (observation rendered as a DATA_ONLY fragment)
+  recorded_at*     timestamp
+  tenant_id*       uuid
+```
 
-  
+---
 
-id\*              uuid
+## State schema
 
-  
+---
 
-step_id\*         uuid → Step.id
+### AgentState (projection — never stored as primary data)
 
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-tool_call_id     uuid → ToolCall.id | null
-
-  
-
-source\*          ObservationSource
-
-  
-
-fragment\*        ContextFragment (observation rendered as a DATA_ONLY fragment)
-
-  
-
-recorded_at\*     timestamp
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## State schema**
-
-  
-
-\---
-
-  
-
-**### AgentState (projection — never stored as primary data)**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-event_log\*       list[EventEnvelope] (ordered by logical_clock)
-
-  
+  event_log*       list[EventEnvelope] (ordered by logical_clock)
 
 OUTPUT (derived)
-
-  
-
-run_id\*          uuid
-
-  
-
-status\*          RunStatus
-
-  
-
-goal             string | null
-
-  
-
-current_step\*    integer (logical step index)
-
-  
-
-observations\*    list[uuid → Observation.id]
-
-  
-
-tool_results\*    list[uuid → ToolResult.id]
-
-  
-
-errors\*          list[RunError]
-
-  
-
-budget\*          BudgetState
-
-  
-
-steps_used     integer
-
-  
-
-steps_limit    integer
-
-  
-
-model_calls_used    integer
-
-  
-
-model_calls_limit   integer
-
-  
-
-tokens_used    integer
-
-  
-
-tokens_limit   integer
-
-  
-
-cost_usd_used  float
-
-  
-
-cost_usd_limit float
-
-  
-
-wall_ms_used   integer
-
-  
-
-wall_ms_limit  integer
-
-  
-
-tool_calls_used     integer
-
-  
-
-tool_calls_limit    integer
-
-  
-
-retries_used   integer
-
-  
-
-retries_limit  integer
-
-  
-
-final_answer     string | null
-
-  
-
-logical_clock\*   integer (step index — deterministic, used for replay)
-
-  
-
-wall_clock\*      timestamp (real time — not used for replay)
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Event schemas**
-
-  
-
-\---
-
-  
-
-**### EventEnvelope (wraps every event)**
-
-  
-
-\`\`\`
-
-  
-
+  run_id*          uuid
+  status*          RunStatus
+  goal             string | null
+  current_step*    integer (logical step index)
+  observations*    list[uuid → Observation.id]
+  tool_results*    list[uuid → ToolResult.id]
+  errors*          list[RunError]
+  budget*          BudgetState
+    steps_used     integer
+    steps_limit    integer
+    model_calls_used    integer
+    model_calls_limit   integer
+    tokens_used    integer
+    tokens_limit   integer
+    cost_usd_used  float
+    cost_usd_limit float
+    wall_ms_used   integer
+    wall_ms_limit  integer
+    tool_calls_used     integer
+    tool_calls_limit    integer
+    retries_used   integer
+    retries_limit  integer
+  final_answer     string | null
+  logical_clock*   integer (step index — deterministic, used for replay)
+  wall_clock*      timestamp (real time — not used for replay)
+```
+
+---
+
+## Event schemas
+
+---
+
+### EventEnvelope (wraps every event)
+
+```
 INPUT
-
-  
-
-event_type\*      string
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-step_id          uuid → Step.id | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-principal\*       Principal
-
-  
-
-payload\*         dict (event-specific)
-
-  
+  event_type*      string
+  run_id*          uuid → Run.id
+  step_id          uuid → Step.id | null
+  tenant_id*       uuid
+  principal*       Principal
+  payload*         dict (event-specific)
 
 OUTPUT (persisted)
+  event_id*        uuid
+  schema_version*  string (e.g. "1.0.0" — never changes for a given event shape)
+  event_type*      string
+  run_id*          uuid → Run.id
+  step_id          uuid → Step.id | null
+  tenant_id*       uuid
+  principal*       Principal
+  occurred_at*     timestamp
+  logical_clock*   integer (monotonic per run, used for ordering and replay)
+  payload*         dict
+```
 
-  
+---
 
-event_id\*        uuid
+### Event payloads
 
-  
-
-schema_version\*  string (e.g. "1.0.0" — never changes for a given event shape)
-
-  
-
-event_type\*      string
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-step_id          uuid → Step.id | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-principal\*       Principal
-
-  
-
-occurred_at\*     timestamp
-
-  
-
-logical_clock\*   integer (monotonic per run, used for ordering and replay)
-
-  
-
-payload\*         dict
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### Event payloads**
-
-  
-
-\`\`\`
-
-  
-
+```
 RunCreated
-
-  
-
-agent_id\*        uuid
-
-  
-
-version_id\*      uuid
-
-  
-
-session_id\*      uuid
-
-  
-
-turn_id\*         uuid
-
-  
-
-user_input\*      string
-
-  
+  agent_id*        uuid
+  version_id*      uuid
+  session_id*      uuid
+  turn_id*         uuid
+  user_input*      string
 
 StepStarted
-
-  
-
-step_index\*      integer
-
-  
+  step_index*      integer
 
 ContextAssembled
-
-  
-
-fragment_ids\*    list[uuid]
-
-  
-
-total_tokens\*    integer
-
-  
-
-sources\*         list[FragmentSource]
-
-  
+  fragment_ids*    list[uuid]
+  total_tokens*    integer
+  sources*         list[FragmentSource]
 
 ModelRequested
-
-  
-
-request_id\*      uuid
-
-  
-
-provider\*        string
-
-  
-
-model_id\*        string
-
-  
-
-input_tokens\*    integer
-
-  
+  request_id*      uuid
+  provider*        string
+  model_id*        string
+  input_tokens*    integer
 
 ModelResponded
-
-  
-
-response_id\*     uuid
-
-  
-
-stop_reason\*     string
-
-  
-
-input_tokens\*    integer
-
-  
-
-output_tokens\*   integer
-
-  
-
-total_tokens\*    integer
-
-  
-
-cost_usd\*        float
-
-  
-
-latency_ms\*      integer
-
-  
+  response_id*     uuid
+  stop_reason*     string
+  input_tokens*    integer
+  output_tokens*   integer
+  total_tokens*    integer
+  cost_usd*        float
+  latency_ms*      integer
 
 ActionProposed
-
-  
-
-proposal_id\*     uuid
-
-  
-
-type\*            ProposalType
-
-  
-
-tool_name        string | null
-
-  
+  proposal_id*     uuid
+  type*            ProposalType
+  tool_name        string | null
 
 PolicyDecided
+  decision_id*     uuid
+  proposal_id*     uuid
+  decision*        Decision
+  decided_by*      string
+  reason           string | null
 
-  
-
-decision_id\*     uuid
-
-  
-
-proposal_id\*     uuid
-
-  
-
-decision\*        Decision
-
-  
-
-decided_by\*      string
-
-  
-
-reason           string | null
-
-  
-
-ToolCallIntended                    ← WRITTEN BEFORE EXECUTION
-
-  
-
-tool_call_id\*    uuid
-
-  
-
-tool_name\*       string
-
-  
-
-tool_version\*    string
-
-  
-
-args\*            dict
-
-  
-
-dedup_key\*       string
-
-  
+ToolCallIntended                    ← WRITTEN BEFORE EXECUTION
+  tool_call_id*    uuid
+  tool_name*       string
+  tool_version*    string
+  args*            dict
+  dedup_key*       string
 
 ToolCallCompleted
+  tool_call_id*    uuid
+  result_id*       uuid
+  status*          ToolResultStatus
+  latency_ms*      integer
 
-  
-
-tool_call_id\*    uuid
-
-  
-
-result_id\*       uuid
-
-  
-
-status\*          ToolResultStatus
-
-  
-
-latency_ms\*      integer
-
-  
-
-UnknownOutcome                      ← crash between intended and completed
-
-  
-
-tool_call_id\*    uuid
-
-  
-
-dedup_key\*       string
-
-  
-
-recovery_policy\* RecoveryPolicy
-
-  
+UnknownOutcome                      ← crash between intended and completed
+  tool_call_id*    uuid
+  dedup_key*       string
+  recovery_policy* RecoveryPolicy
 
 ObservationRecorded
-
-  
-
-observation_id\*  uuid
-
-  
-
-source\*          ObservationSource
-
-  
-
-fragment_id\*     uuid
-
-  
+  observation_id*  uuid
+  source*          ObservationSource
+  fragment_id*     uuid
 
 StepCompleted
-
-  
-
-step_index\*      integer
-
-  
-
-outcome\*         string (tool_call | final_answer | error)
-
-  
+  step_index*      integer
+  outcome*         string (tool_call | final_answer | error)
 
 BudgetDebited
-
-  
-
-dimension\*       string (steps | model_calls | tokens | cost | wall_time | tool_calls | retries)
-
-  
-
-amount\*          float
-
-  
-
-remaining\*       float
-
-  
+  dimension*       string (steps | model_calls | tokens | cost | wall_time | tool_calls | retries)
+  amount*          float
+  remaining*       float
 
 RunCompleted
-
-  
-
-final_answer\*    string
-
-  
-
-steps_taken\*     integer
-
-  
-
-total_cost_usd\*  float
-
-  
-
-total_tokens\*    integer
-
-  
-
-wall_ms\*         integer
-
-  
+  final_answer*    string
+  steps_taken*     integer
+  total_cost_usd*  float
+  total_tokens*    integer
+  wall_ms*         integer
 
 RunFailed
-
-  
-
-error_code\*      string
-
-  
-
-error_message\*   string
-
-  
-
-recoverable\*     bool
-
-  
+  error_code*      string
+  error_message*   string
+  recoverable*     bool
 
 HumanInputRequested
-
-  
-
-request_id\*      uuid
-
-  
-
-prompt\*          string
-
-  
-
-context          string | null
-
-  
-
-timeout_seconds  integer | null
-
-  
+  request_id*      uuid
+  prompt*          string
+  context          string | null
+  timeout_seconds  integer | null
 
 HumanInputReceived
+  request_id*      uuid
+  response*        string
+  responded_by*    uuid
+```
 
-  
+---
 
-request_id\*      uuid
+## Reasoning schemas (Stage C — gated by evaluation)
 
-  
+---
 
-response\*        string
+### GoalAnalysis
 
-  
-
-responded_by\*    uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Reasoning schemas (Stage C — gated by evaluation)**
-
-  
-
-\---
-
-  
-
-**### GoalAnalysis**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-user_input\*              string
-
-  
-
-conversation_history     list[Message]
-
-  
-
-agent_context            dict
-
-  
+  user_input*              string
+  conversation_history     list[Message]
+  agent_context            dict
 
 OUTPUT
+  intent*                  string
+  constraints*             list[string]
+  context*                 dict
+  success_criteria*        list[string]
+  ambiguities              list[Ambiguity]
+    field                  string
+    description            string
+    clarification_needed   bool
+  confidence*              float (0.0–1.0)
+```
 
-  
+---
 
-intent\*                  string
+### TaskGraph
 
-  
-
-constraints\*             list[string]
-
-  
-
-context\*                 dict
-
-  
-
-success_criteria\*        list[string]
-
-  
-
-ambiguities              list[Ambiguity]
-
-  
-
-field                  string
-
-  
-
-description            string
-
-  
-
-clarification_needed   bool
-
-  
-
-confidence\*              float (0.0–1.0)
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### TaskGraph**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-goal_analysis\*   GoalAnalysis
-
-  
+  goal_analysis*   GoalAnalysis
 
 OUTPUT
+  tasks*           list[Task]
+    id*            uuid
+    name*          string
+    description*   string
+    input_schema*  JSONSchema
+    output_schema* JSONSchema
+    depends_on*    list[uuid → Task.id]
+    task_type      string (research | action | synthesis | verification)
+  dependency_graph* dict[uuid → list[uuid]]
+  validation*      TaskGraphValidation
+    valid          bool
+    cycles         list[list[uuid]]
+    missing_inputs list[uuid]
+    errors         list[string]
+```
 
-  
+---
 
-tasks\*           list[Task]
+### ExecutionPlan
 
-  
-
-id\*            uuid
-
-  
-
-name\*          string
-
-  
-
-description\*   string
-
-  
-
-input_schema\*  JSONSchema
-
-  
-
-output_schema\* JSONSchema
-
-  
-
-depends_on\*    list[uuid → Task.id]
-
-  
-
-task_type      string (research | action | synthesis | verification)
-
-  
-
-dependency_graph\* dict[uuid → list[uuid]]
-
-  
-
-validation\*      TaskGraphValidation
-
-  
-
-valid          bool
-
-  
-
-cycles         list[list[uuid]]
-
-  
-
-missing_inputs list[uuid]
-
-  
-
-errors         list[string]
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### ExecutionPlan**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-task_graph\*      TaskGraph
-
-  
-
-strategy\*        ExecutionStrategy (react | plan_and_execute | reflection)
-
-  
+  task_graph*      TaskGraph
+  strategy*        ExecutionStrategy (react | plan_and_execute | reflection)
 
 OUTPUT
+  groups*          list[ExecutionGroup]
+    id*            uuid
+    type*          GroupType (sequential | parallel)
+    task_ids*      list[uuid → Task.id]
+    depends_on*    list[uuid → ExecutionGroup.id]
+  strategy*        ExecutionStrategy
+  estimated_steps  integer
+  estimated_cost   float
+  replan_triggers* list[string]
+  plan_valid*      bool
+  validation_errors list[string]
+```
 
-  
+---
 
-groups\*          list[ExecutionGroup]
+### VerificationResult
 
-  
-
-id\*            uuid
-
-  
-
-type\*          GroupType (sequential | parallel)
-
-  
-
-task_ids\*      list[uuid → Task.id]
-
-  
-
-depends_on\*    list[uuid → ExecutionGroup.id]
-
-  
-
-strategy\*        ExecutionStrategy
-
-  
-
-estimated_steps  integer
-
-  
-
-estimated_cost   float
-
-  
-
-replan_triggers\* list[string]
-
-  
-
-plan_valid\*      bool
-
-  
-
-validation_errors list[string]
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### VerificationResult**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-observation\*         Observation
-
-  
-
-goal\*                GoalAnalysis
-
-  
-
-prior_observations\*  list[Observation]
-
-  
+  observation*         Observation
+  goal*                GoalAnalysis
+  prior_observations*  list[Observation]
 
 OUTPUT
+  valid*               bool
+  goal_met*            bool
+  contradictions*      list[Contradiction]
+    observation_id     uuid
+    prior_id           uuid
+    description        string
+  confidence*          float (0.0–1.0)
+  action*              VerificationAction (proceed | retry | replan | escalate)
+  reason               string | null
+```
 
-  
+---
 
-valid\*               bool
+## Scale schemas (Stage D)
 
-  
+---
 
-goal_met\*            bool
+### HumanInputRequest
 
-  
-
-contradictions\*      list[Contradiction]
-
-  
-
-observation_id     uuid
-
-  
-
-prior_id           uuid
-
-  
-
-description        string
-
-  
-
-confidence\*          float (0.0–1.0)
-
-  
-
-action\*              VerificationAction (proceed | retry | replan | escalate)
-
-  
-
-reason               string | null
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Scale schemas (Stage D)**
-
-  
-
-\---
-
-  
-
-**### HumanInputRequest**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-run_id\*          uuid → Run.id
-
-  
-
-step_id\*         uuid → Step.id
-
-  
-
-prompt\*          string
-
-  
-
-context          string | null
-
-  
-
-timeout_seconds  integer | null
-
-  
+  run_id*          uuid → Run.id
+  step_id*         uuid → Step.id
+  prompt*          string
+  context          string | null
+  timeout_seconds  integer | null
 
 OUTPUT (persisted)
+  request_id*      uuid
+  run_id*          uuid
+  step_id*         uuid
+  prompt*          string
+  context          string | null
+  timeout_seconds  integer | null
+  status*          HumanRequestStatus (pending | responded | timed_out | cancelled)
+  response         string | null
+  responded_by     uuid | null
+  requested_at*    timestamp
+  responded_at     timestamp | null
+  tenant_id*       uuid
+```
 
-  
+---
 
-request_id\*      uuid
+### Lease
 
-  
-
-run_id\*          uuid
-
-  
-
-step_id\*         uuid
-
-  
-
-prompt\*          string
-
-  
-
-context          string | null
-
-  
-
-timeout_seconds  integer | null
-
-  
-
-status\*          HumanRequestStatus (pending | responded | timed_out | cancelled)
-
-  
-
-response         string | null
-
-  
-
-responded_by     uuid | null
-
-  
-
-requested_at\*    timestamp
-
-  
-
-responded_at     timestamp | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### Lease**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-run_id\*              uuid → Run.id
-
-  
-
-worker_id\*           string
-
-  
-
-lease_duration_ms\*   integer
-
-  
+  run_id*              uuid → Run.id
+  worker_id*           string
+  lease_duration_ms*   integer
 
 OUTPUT (persisted)
+  lease_id*            uuid
+  run_id*              uuid
+  worker_id*           string
+  fencing_token*       integer (monotonic — higher value always wins conflicts)
+  acquired_at*         timestamp
+  expires_at*          timestamp
+  renewed_at           timestamp | null
+  released_at          timestamp | null
+  status*              LeaseStatus (active | expired | released | stolen)
+  tenant_id*           uuid
+```
 
-  
+---
 
-lease_id\*            uuid
+## Knowledge schemas (Stage E)
 
-  
+---
 
-run_id\*              uuid
+### MemoryRecord
 
-  
-
-worker_id\*           string
-
-  
-
-fencing_token\*       integer (monotonic — higher value always wins conflicts)
-
-  
-
-acquired_at\*         timestamp
-
-  
-
-expires_at\*          timestamp
-
-  
-
-renewed_at           timestamp | null
-
-  
-
-released_at          timestamp | null
-
-  
-
-status\*              LeaseStatus (active | expired | released | stolen)
-
-  
-
-tenant_id\*           uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Knowledge schemas (Stage E)**
-
-  
-
-\---
-
-  
-
-**### MemoryRecord**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-content\*         string
-
-  
-
-memory_type\*     MemoryType (short_term | long_term | episodic | semantic)
-
-  
-
-source\*          string
-
-  
-
-agent_id\*        uuid → Agent.id
-
-  
-
-principal\*       Principal
-
-  
-
-expires_at       timestamp | null
-
-  
+  content*         string
+  memory_type*     MemoryType (short_term | long_term | episodic | semantic)
+  source*          string
+  agent_id*        uuid → Agent.id
+  principal*       Principal
+  expires_at       timestamp | null
 
 OUTPUT (persisted)
+  memory_id*       uuid
+  content_hash*    string (sha256)
+  embedding*       list[float] (vector representation)
+  content*         string
+  memory_type*     MemoryType
+  source*          string
+  agent_id*        uuid
+  principal*       Principal
+  provenance*      Provenance
+    run_id         uuid | null
+    step_id        uuid | null
+    captured_at    timestamp
+  created_at*      timestamp
+  expires_at       timestamp | null
+  tenant_id*       uuid
+```
 
-  
+---
 
-memory_id\*       uuid
+### MemoryQuery
 
-  
-
-content_hash\*    string (sha256)
-
-  
-
-embedding\*       list[float] (vector representation)
-
-  
-
-content\*         string
-
-  
-
-memory_type\*     MemoryType
-
-  
-
-source\*          string
-
-  
-
-agent_id\*        uuid
-
-  
-
-principal\*       Principal
-
-  
-
-provenance\*      Provenance
-
-  
-
-run_id         uuid | null
-
-  
-
-step_id        uuid | null
-
-  
-
-captured_at    timestamp
-
-  
-
-created_at\*      timestamp
-
-  
-
-expires_at       timestamp | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### MemoryQuery**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-query_text       string | null
-
-  
-
-embedding        list[float] | null   (one of query_text or embedding required)
-
-  
-
-memory_types     list[MemoryType] | null
-
-  
-
-agent_id\*        uuid → Agent.id
-
-  
-
-limit\*           integer
-
-  
-
-min_relevance    float (0.0–1.0)
-
-  
-
-max_age_seconds  integer | null
-
-  
+  query_text       string | null
+  embedding        list[float] | null   (one of query_text or embedding required)
+  memory_types     list[MemoryType] | null
+  agent_id*        uuid → Agent.id
+  limit*           integer
+  min_relevance    float (0.0–1.0)
+  max_age_seconds  integer | null
 
 OUTPUT
+  results*         list[MemoryResult]
+    memory*        MemoryRecord
+    relevance*     float (0.0–1.0)
+    rank*          integer
+```
 
-  
+---
 
-results\*         list[MemoryResult]
+### KnowledgeChunk
 
-  
-
-memory\*        MemoryRecord
-
-  
-
-relevance\*     float (0.0–1.0)
-
-  
-
-rank\*          integer
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### KnowledgeChunk**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-document_id\*     uuid
-
-  
-
-content\*         string
-
-  
-
-chunk_index\*     integer
-
-  
-
-metadata         dict
-
-  
-
-source_url       string | null
-
-  
-
-expires_at       timestamp | null
-
-  
+  document_id*     uuid
+  content*         string
+  chunk_index*     integer
+  metadata         dict
+  source_url       string | null
+  expires_at       timestamp | null
 
 OUTPUT (persisted)
+  chunk_id*        uuid
+  document_id*     uuid
+  content_hash*    string (sha256)
+  embedding*       list[float]
+  content*         string
+  chunk_index*     integer
+  metadata         dict
+  source_url       string | null
+  captured_at*     timestamp
+  expires_at       timestamp | null
+  tenant_id*       uuid
+```
 
-  
+---
 
-chunk_id\*        uuid
+### KnowledgeQuery
 
-  
-
-document_id\*     uuid
-
-  
-
-content_hash\*    string (sha256)
-
-  
-
-embedding\*       list[float]
-
-  
-
-content\*         string
-
-  
-
-chunk_index\*     integer
-
-  
-
-metadata         dict
-
-  
-
-source_url       string | null
-
-  
-
-captured_at\*     timestamp
-
-  
-
-expires_at       timestamp | null
-
-  
-
-tenant_id\*       uuid
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**### KnowledgeQuery**
-
-  
-
-\`\`\`
-
-  
-
+```
 INPUT
-
-  
-
-query_text       string | null
-
-  
-
-embedding        list[float] | null   (one of query_text or embedding required)
-
-  
-
-limit\*           integer
-
-  
-
-min_relevance    float (0.0–1.0)
-
-  
-
-max_age_seconds  integer | null
-
-  
-
-document_ids     list[uuid] | null
-
-  
+  query_text       string | null
+  embedding        list[float] | null   (one of query_text or embedding required)
+  limit*           integer
+  min_relevance    float (0.0–1.0)
+  max_age_seconds  integer | null
+  document_ids     list[uuid] | null
 
 OUTPUT
+  results*         list[KnowledgeResult]
+    chunk*         KnowledgeChunk
+    relevance*     float (0.0–1.0)
+    rank*          integer
+    provenance*    string (source_url or document_id)
+```
 
-  
+---
 
-results\*         list[KnowledgeResult]
+## All enums
 
-  
-
-chunk\*         KnowledgeChunk
-
-  
-
-relevance\*     float (0.0–1.0)
-
-  
-
-rank\*          integer
-
-  
-
-provenance\*    string (source_url or document_id)
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## All enums**
-
-  
-
-\`\`\`
-
-  
-
+```
 RunStatus
-
-  
-
-CREATED | RUNNING | WAITING | PAUSED | COMPLETED | FAILED | CANCELLED
-
-  
+  CREATED | RUNNING | WAITING | PAUSED | COMPLETED | FAILED | CANCELLED
 
 StepStatus
-
-  
-
-RUNNING | COMPLETED | FAILED
-
-  
+  RUNNING | COMPLETED | FAILED
 
 ProposalType
-
-  
-
-TOOL_CALL | FINAL_ANSWER
-
-  
+  TOOL_CALL | FINAL_ANSWER
 
 Decision
-
-  
-
-APPROVED | REJECTED | MODIFIED
-
-  
+  APPROVED | REJECTED | MODIFIED
 
 FragmentSource
-
-  
-
-SYSTEM_INSTRUCTIONS | AGENT_INSTRUCTIONS | USER_INPUT
-
-  
-
-CONVERSATION_HISTORY | TOOL_RESULT | MEMORY | KNOWLEDGE | RUN_STATE
-
-  
+  SYSTEM_INSTRUCTIONS | AGENT_INSTRUCTIONS | USER_INPUT
+  CONVERSATION_HISTORY | TOOL_RESULT | MEMORY | KNOWLEDGE | RUN_STATE
 
 AuthorityLevel
-
-  
-
-CAN_INSTRUCT | DATA_ONLY
-
-  
+  CAN_INSTRUCT | DATA_ONLY
 
 TrustLevel
-
-  
-
-TRUSTED | SEMI_TRUSTED | UNTRUSTED
-
-  
+  TRUSTED | SEMI_TRUSTED | UNTRUSTED
 
 EffectClass
-
-  
-
-READ | CREATE | UPDATE | DELETE | EXTERNAL
-
-  
+  READ | CREATE | UPDATE | DELETE | EXTERNAL
 
 IdempotencyClass
-
-  
-
-NATURAL | CLIENT_KEY | NONE
-
-  
+  NATURAL | CLIENT_KEY | NONE
 
 ReversibilityClass
-
-  
-
-REVERSIBLE | COMPENSATABLE | IRREVERSIBLE
-
-  
+  REVERSIBLE | COMPENSATABLE | IRREVERSIBLE
 
 RecoveryPolicy
-
-  
-
-RETRY_SAFE | RECONCILE | MANUAL
-
-  
+  RETRY_SAFE | RECONCILE | MANUAL
 
 ToolResultStatus
-
-  
-
-SUCCESS | ERROR | TIMEOUT | CANCELLED | UNKNOWN
-
-  
+  SUCCESS | ERROR | TIMEOUT | CANCELLED | UNKNOWN
 
 ToolErrorType
-
-  
-
-VALIDATION_ERROR | TIMEOUT | TOOL_FAILURE | UNKNOWN_OUTCOME
-
-  
+  VALIDATION_ERROR | TIMEOUT | TOOL_FAILURE | UNKNOWN_OUTCOME
 
 ObservationSource
-
-  
-
-TOOL_RESULT | MODEL_RESPONSE | HUMAN_INPUT | SYSTEM
-
-  
+  TOOL_RESULT | MODEL_RESPONSE | HUMAN_INPUT | SYSTEM
 
 StopReason
-
-  
-
-END_TURN | TOOL_USE | MAX_TOKENS | STOP_SEQUENCE
-
-  
+  END_TURN | TOOL_USE | MAX_TOKENS | STOP_SEQUENCE
 
 MemoryType
-
-  
-
-SHORT_TERM | LONG_TERM | EPISODIC | SEMANTIC
-
-  
+  SHORT_TERM | LONG_TERM | EPISODIC | SEMANTIC
 
 HumanRequestStatus
-
-  
-
-PENDING | RESPONDED | TIMED_OUT | CANCELLED
-
-  
+  PENDING | RESPONDED | TIMED_OUT | CANCELLED
 
 LeaseStatus
-
-  
-
-ACTIVE | EXPIRED | RELEASED | STOLEN
-
-  
+  ACTIVE | EXPIRED | RELEASED | STOLEN
 
 ExecutionStrategy
-
-  
-
-REACT | PLAN_AND_EXECUTE | REFLECTION
-
-  
+  REACT | PLAN_AND_EXECUTE | REFLECTION
 
 GroupType
-
-  
-
-SEQUENTIAL | PARALLEL
-
-  
+  SEQUENTIAL | PARALLEL
 
 VerificationAction
-
-  
-
-PROCEED | RETRY | REPLAN | ESCALATE
-
-  
+  PROCEED | RETRY | REPLAN | ESCALATE
 
 QuestionType
+  CHOICE | SCORE | BOOLEAN
+```
 
-  
+---
 
-CHOICE | SCORE | BOOLEAN
+## State machine — valid transitions
 
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## State machine — valid transitions**
-
-  
-
-\`\`\`
-
-  
-
-CREATED    → RUNNING
-
-  
-
-RUNNING    → WAITING | PAUSED | COMPLETED | FAILED | CANCELLED
-
-  
-
-WAITING    → RUNNING | CANCELLED | FAILED
-
-  
-
-PAUSED     → RUNNING | CANCELLED
-
-  
-
-COMPLETED  → (terminal — no further transitions)
-
-  
-
-FAILED     → (terminal — no further transitions)
-
-  
-
-CANCELLED  → (terminal — no further transitions)
-
-  
-
-\`\`\`
-
-  
+```
+CREATED    → RUNNING
+RUNNING    → WAITING | PAUSED | COMPLETED | FAILED | CANCELLED
+WAITING    → RUNNING | CANCELLED | FAILED
+PAUSED     → RUNNING | CANCELLED
+COMPLETED  → (terminal — no further transitions)
+FAILED     → (terminal — no further transitions)
+CANCELLED  → (terminal — no further transitions)
+```
 
 Illegal transitions are rejected at write time, not caught at read time.
 
-  
-
-\---
-
-  
-
-**## Recovery matrix**
-
-  
-
-\`\`\`
-
-  
-
-Error class              Recovery policy
-
-  
-
-──────────────────────   ──────────────────────────────────────
-
-  
-
-ModelTransientError      retry with exponential backoff
-
-  
-
-ModelInvalidOutput       retry with repair prompt
-
-  
-
-ToolValidationError      fail (model proposed invalid args)
-
-  
-
-ToolTimeout              retry or reconcile (per tool policy)
-
-  
-
-ToolFailure              retry or escalate (per tool policy)
-
-  
-
-UnknownToolOutcome       reconcile or manual (per tool policy)
-
-  
-
-BudgetExceeded           fail
-
-  
-
-LeaseLost                requeue run
-
-  
-
-RunCancelled             fail
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Truth model**
-
-  
-
-\`\`\`
-
-  
-
-Event log   = truth          (append-only, never modified)
-
-  
-
-AgentState  = projection     (derived from events, never stored as primary)
-
-  
-
-Checkpoint  = optimisation   (shortcut for projection, not truth)
-
-  
-
-\`\`\`
-
-  
-
-\---
-
-  
-
-**## Execution modes**
-
-  
-
-\`\`\`
-
-  
-
-REPLAY   reconstruct from event log only
-
-  
-
-no model call, no tool call, ever
-
-  
-
-same code, same log, deterministic
-
-  
-
-RESUME   reconstruct history from log
-
-  
-
-then continue with new durable steps
-
-  
-
-real model and tool calls allowed
-
-  
-
-EVAL     new code version
-
-  
-
-recorded model and tool responses stand in for real ones
-
-  
-
-no network, no real calls
-
-  
-
-non-determinism comes from the log, logic comes from HEAD
-
-  
-
-\`\`\`
-
-  
+---
+
+## Recovery matrix
+
+```
+Error class              Recovery policy
+──────────────────────   ──────────────────────────────────────
+ModelTransientError      retry with exponential backoff
+ModelInvalidOutput       retry with repair prompt
+ToolValidationError      fail (model proposed invalid args)
+ToolTimeout              retry or reconcile (per tool policy)
+ToolFailure              retry or escalate (per tool policy)
+UnknownToolOutcome       reconcile or manual (per tool policy)
+BudgetExceeded           fail
+LeaseLost                requeue run
+RunCancelled             fail
+```
+
+---
+
+## Truth model
+
+```
+Event log   = truth          (append-only, never modified)
+AgentState  = projection     (derived from events, never stored as primary)
+Checkpoint  = optimisation   (shortcut for projection, not truth)
+```
+
+---
+
+## Execution modes
+
+```
+REPLAY   reconstruct from event log only
+         no model call, no tool call, ever
+         same code, same log, deterministic
+
+RESUME   reconstruct history from log
+         then continue with new durable steps
+         real model and tool calls allowed
+
+EVAL     new code version
+         recorded model and tool responses stand in for real ones
+         no network, no real calls
+         non-determinism comes from the log, logic comes from HEAD
+```
 
 Entering EVAL against a production log requires an explicit flag. These three modes are enforced in code, not in documentation.
 
-  
+---
 
-\---
+## Intent before effect rule
 
-  
-
-**## Intent before effect rule**
-
-  
-
-\`\`\`
-
-  
-
-1\. Write ToolCallIntended (with dedup_key) to the event log
-
-  
-
-2\. Execute the tool
-
-  
-
-3\. Write ToolCallCompleted (or UnknownOutcome if process dies between 1 and 3)
-
-  
+```
+1. Write ToolCallIntended (with dedup_key) to the event log
+2. Execute the tool
+3. Write ToolCallCompleted (or UnknownOutcome if process dies between 1 and 3)
 
 On restart:
-
-  
-
-ToolCallIntended with no matching ToolCallCompleted
-
-  
-
-→ trigger that tool's declared recovery policy
-
-  
-
-→ never silently re-execute
-
-  
-
-\`\`\`
-
-  
+  ToolCallIntended with no matching ToolCallCompleted
+  → trigger that tool's declared recovery policy
+  → never silently re-execute
+```
 
 UnknownOutcome is a first-class event. It is not an exception. It is not a special case. It is the expected result of a crash between steps 1 and 3, and every tool's recovery policy must handle it.
