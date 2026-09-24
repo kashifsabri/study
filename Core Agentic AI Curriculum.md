@@ -157,6 +157,7 @@ Topics 31–36    Advanced production patterns
                              └── Step
 
    ```
+   
 
 3. What each entity owns and what it references
 
@@ -433,6 +434,7 @@ decide(state, questions) → structured decisions with confidence
     recovery      derived from the three above — never declared independently
 
     ```
+    
 
 11. Dedup keys — passed to every effectful tool, preventing double execution
 
@@ -513,6 +515,7 @@ EXTERNAL + CLIENT_KEY + COMPENSATABLE → reconcile
    memory             data_only                untrusted
 
    ```
+   
 
 5. Why tool output is data only and can never carry instructions
 
@@ -603,6 +606,7 @@ final_answer, logical_clock, wall_clock
    CANCELLED → (terminal)
 
    ```
+   
 
 5. Enforcing transitions — illegal ones rejected at write time
 

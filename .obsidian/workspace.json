@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "2. Core Agent Schemas.md",
+                "file": "Core Agentic AI Curriculum.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "2. Core Agent Schemas"
+              "title": "Core Agentic AI Curriculum"
             }
           }
         ],
@@ -114,7 +114,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "2. Core Agent Schemas.md",
+                "file": "Core Agentic AI Curriculum.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -133,7 +133,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "2. Core Agent Schemas.md",
+                "file": "Core Agentic AI Curriculum.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -176,7 +176,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "2. Core Agent Schemas.md",
+                "file": "Core Agentic AI Curriculum.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -205,8 +205,8 @@
   },
   "active": "4f879e9acf369759",
   "lastOpenFiles": [
-    "Core Agentic AI Curriculum.md",
     "2. Core Agent Schemas.md",
+    "Core Agentic AI Curriculum.md",
     "Untitled"
   ]
 }
