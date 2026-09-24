@@ -589,8 +589,7 @@ final_answer, logical_clock, wall_clock
 
 4. The full valid transition table:
 
-   ```
-
+```
    CREATED   → RUNNING
 
    RUNNING   → WAITING | PAUSED | COMPLETED | FAILED | CANCELLED
@@ -604,6 +603,9 @@ final_answer, logical_clock, wall_clock
    FAILED    → (terminal)
 
    CANCELLED → (terminal)
+
+
+```
 
    ```
    
