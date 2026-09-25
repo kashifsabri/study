@@ -4,67 +4,20 @@
     "type": "split",
     "children": [
       {
-        "id": "4e2b5620936bf45d",
+        "id": "7608f2f809e06f0a",
         "type": "tabs",
         "children": [
           {
-            "id": "4ce183930fbd08e0",
+            "id": "17e2ff3eb144c9e3",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Agent-core-curriculam.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "Agent-core-curriculam"
-            }
-          },
-          {
-            "id": "4f879e9acf369759",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Agent-core-curriculam.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Agent-core-curriculam"
-            }
-          },
-          {
-            "id": "38fc1bef34e5d5c6",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Startup/3. agent-core-flow.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "3. agent-core-flow"
-            }
-          },
-          {
-            "id": "643de5eceeec9831",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Startup/3. agent-core-flow.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "3. agent-core-flow"
+              "title": "New tab"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "vertical"
@@ -142,7 +95,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Startup/3. agent-core-flow.md",
+                "file": "Startup/2. agent-core-annotated-tree.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -161,7 +114,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Startup/3. agent-core-flow.md",
+                "file": "Startup/2. agent-core-annotated-tree.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -204,7 +157,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Startup/3. agent-core-flow.md",
+                "file": "Startup/2. agent-core-annotated-tree.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -231,12 +184,31 @@
       "bases:Create new base": false
     }
   },
-  "active": "643de5eceeec9831",
+  "active": "32e82c018f16c44b",
   "lastOpenFiles": [
-    "Startup/2. agent-core-annotated-tree.md",
-    "Startup/1. agent-core-schemas.md",
-    "Startup/3. agent-core-flow.md",
+    "Topic 2 — The Agent Loop/2.8 Reading a Real Agent Trace End to End.md",
+    "Topic 2 — The Agent Loop/2.7 Why the Model Proposes and the Runtime Executes.md",
+    "Topic 2 — The Agent Loop/2.6 How the Loop Terminates - Goal Met, Budget Exhausted, Failure.md",
+    "Topic 2 — The Agent Loop/2.5 What an Observation Is and Why It Matters.md",
+    "Topic 2 — The Agent Loop/2.4 What a Step Is.md",
+    "Topic 2 — The Agent Loop/2.3 The ReAct Loop - Reason, Act, Observe, Repeat.md",
+    "Topic 2 — The Agent Loop/2.2 The Minimal Loop - Perceive, Reason, Act.md",
+    "Topic 2 — The Agent Loop/2.1 Why Agents Run in a Loop and Not a Pipeline.md",
+    "Topic 1 — Foundations of Intelligent Agents/9. Real-World Examples of Agents.md",
+    "Topic 1 — Foundations of Intelligent Agents/7. The Environment — What the Agent Sees and Acts On.md",
+    "Topic 2 — The Agent Loop",
+    "Topic 1 — Foundations of Intelligent Agents/8. Perception, Reasoning, Action — The Three Responsibilities.md",
+    "Topic 1 — Foundations of Intelligent Agents/6. Why a Language Model Alone Is Not an Agent.md",
+    "Topic 1 — Foundations of Intelligent Agents/5. What a Language Model Can and Cannot Do.md",
+    "Topic 1 — Foundations of Intelligent Agents/4. Where the Language Model Fits in an Agent.md",
+    "Topic 1 — Foundations of Intelligent Agents/3. Types of Agents.md",
     "Agent-core-curriculam.md",
+    "Topic 1 — Foundations of Intelligent Agents/2. Agent vs Chatbot vs Workflow vs Automation.md",
+    "Topic 1 — Foundations of Intelligent Agents/1. What is an agent.md",
+    "Topic 1 — Foundations of Intelligent Agents",
+    "Startup/2. agent-core-annotated-tree.md",
+    "Startup/3. agent-core-flow.md",
+    "Startup/1. agent-core-schemas.md",
     "index.html",
     "Startup/index.html",
     "Startup/2. agent-core-annotated-tree.html",
