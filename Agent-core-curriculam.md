@@ -183,6 +183,7 @@ Observation
   fragment (ContextFragment), recorded_at
 ```
 
+
 ---
 
 ## Topic 5 — Model Interaction

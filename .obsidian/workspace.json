@@ -4,20 +4,109 @@
     "type": "split",
     "children": [
       {
-        "id": "7608f2f809e06f0a",
+        "id": "bdc4408217c85304",
         "type": "tabs",
         "children": [
           {
-            "id": "17e2ff3eb144c9e3",
+            "id": "01e875b0e7b0a483",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Topic 3 — Core Components/Topic 3.5 — Agent boundaries -- what is inside the agent and what is outside.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "Topic 3.5 — Agent boundaries -- what is inside the agent and what is outside"
+            }
+          },
+          {
+            "id": "e23109e42000a006",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Agent-core-curriculam.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Agent-core-curriculam"
+            }
+          },
+          {
+            "id": "c09cd5a9550166a2",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Topic 4 — Domain Modelling and Contracts/Topic 4.1 — Why domain modelling comes before implementation.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Topic 4.1 — Why domain modelling comes before implementation"
+            }
+          },
+          {
+            "id": "31603eae4747fcc3",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Topic 4 — Domain Modelling and Contracts/Topic 4.2 — The ownership hierarchy every agent system needs.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Topic 4.2 — The ownership hierarchy every agent system needs"
+            }
+          },
+          {
+            "id": "42f2e946e70f87ff",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Topic 4 — Domain Modelling and Contracts/Topic 4.3 — What each entity owns and what it references.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Topic 4.3 — What each entity owns and what it references"
+            }
+          },
+          {
+            "id": "c341272a4082f3c7",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Agent-core-curriculam.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Agent-core-curriculam"
+            }
+          },
+          {
+            "id": "da1bf71a4740f33e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Topic 4.5 — Input schema and output schema -- every contract has both.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Topic 4.5 — Input schema and output schema -- every contract has both"
             }
           }
-        ]
+        ],
+        "currentTab": 6
       }
     ],
     "direction": "vertical"
@@ -184,14 +273,30 @@
       "bases:Create new base": false
     }
   },
-  "active": "32e82c018f16c44b",
+  "active": "da1bf71a4740f33e",
   "lastOpenFiles": [
-    "Topic 2 — The Agent Loop/2.8 Reading a Real Agent Trace End to End.md",
-    "Topic 2 — The Agent Loop/2.7 Why the Model Proposes and the Runtime Executes.md",
-    "Topic 2 — The Agent Loop/2.6 How the Loop Terminates - Goal Met, Budget Exhausted, Failure.md",
+    "Agent-core-curriculam.md",
+    "Topic 4.5 — Input schema and output schema -- every contract has both.md",
+    "Topic 4 — Domain Modelling and Contracts/Topic 4.4 — Value objects within a step.md",
+    "Agent Core — project layout (which code goes in which file).md",
+    "Topic 4 — Domain Modelling and Contracts/Topic 4.3 — What each entity owns and what it references.md",
+    "Topic 4 — Domain Modelling and Contracts/Topic 4.2 — The ownership hierarchy every agent system needs.md",
+    "Topic 4 — Domain Modelling and Contracts/Topic 4.1 — Why domain modelling comes before implementation.md",
+    "Topic 4 — Domain Modelling and Contracts",
+    "Topic 3 — Core Components/Topic 3.7 — The runtime as the authority-- the model only suggests, the runtime decides.md",
+    "Topic 3 — Core Components/Topic 3.6 — Designing for replaceability -- why every component should be swappable.md",
+    "Topic 3 — Core Components/Topic 3.5 — Agent boundaries -- what is inside the agent and what is outside.md",
+    "Topic 3 — Core Components/Topic 3.4 — Separation of concerns -- what belongs where.md",
+    "Topic 3 — Core Components/Topic 3.3 — The proposal-execution gap.md",
+    "Topic 3 — Core Components/Topic 3.2 — How components relate to each other.md",
+    "Topic 3 — Core Components/Topic 3.1 — The core components every agent must have.md",
+    "Topic 3 — Core Components",
     "Topic 2 — The Agent Loop/2.5 What an Observation Is and Why It Matters.md",
     "Topic 2 — The Agent Loop/2.4 What a Step Is.md",
     "Topic 2 — The Agent Loop/2.3 The ReAct Loop - Reason, Act, Observe, Repeat.md",
+    "Topic 2 — The Agent Loop/2.8 Reading a Real Agent Trace End to End.md",
+    "Topic 2 — The Agent Loop/2.7 Why the Model Proposes and the Runtime Executes.md",
+    "Topic 2 — The Agent Loop/2.6 How the Loop Terminates - Goal Met, Budget Exhausted, Failure.md",
     "Topic 2 — The Agent Loop/2.2 The Minimal Loop - Perceive, Reason, Act.md",
     "Topic 2 — The Agent Loop/2.1 Why Agents Run in a Loop and Not a Pipeline.md",
     "Topic 1 — Foundations of Intelligent Agents/9. Real-World Examples of Agents.md",
@@ -199,16 +304,7 @@
     "Topic 2 — The Agent Loop",
     "Topic 1 — Foundations of Intelligent Agents/8. Perception, Reasoning, Action — The Three Responsibilities.md",
     "Topic 1 — Foundations of Intelligent Agents/6. Why a Language Model Alone Is Not an Agent.md",
-    "Topic 1 — Foundations of Intelligent Agents/5. What a Language Model Can and Cannot Do.md",
-    "Topic 1 — Foundations of Intelligent Agents/4. Where the Language Model Fits in an Agent.md",
-    "Topic 1 — Foundations of Intelligent Agents/3. Types of Agents.md",
-    "Agent-core-curriculam.md",
-    "Topic 1 — Foundations of Intelligent Agents/2. Agent vs Chatbot vs Workflow vs Automation.md",
-    "Topic 1 — Foundations of Intelligent Agents/1. What is an agent.md",
     "Topic 1 — Foundations of Intelligent Agents",
-    "Startup/2. agent-core-annotated-tree.md",
-    "Startup/3. agent-core-flow.md",
-    "Startup/1. agent-core-schemas.md",
     "index.html",
     "Startup/index.html",
     "Startup/2. agent-core-annotated-tree.html",
